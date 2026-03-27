@@ -1,0 +1,356 @@
+/* ==================== 基础样式 ==================== */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-variant-ligatures: none;
+  word-break: break-all;
+}
+
+html,
+body {
+  height: 100%;
+  background-color: #f1fbfb;
+  overflow: hidden;
+}
+
+.app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.el-main {
+  display: flex;
+  flex: 1;
+  padding: 0;
+}
+
+/* ==================== 功能栏样式 ==================== */
+
+.funcsBar {
+  margin-top: 1px;
+  margin-bottom: 1px;
+  margin-left: 20px;
+  margin-right: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding-left: 5px;
+  gap: 8px;
+}
+
+.settings-dropdown {
+  margin-right: auto;
+}
+
+.settings-dropdown .el-button {
+  padding: 4px 8px;
+}
+
+/* ==================== 布局样式 ==================== */
+
+.leftSection {
+  width: 49.6%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.jsonEditorLeftBox,
+.jsonEditorRightBox {
+  display: flex;
+  flex-direction: column;
+  flex: 3;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#aceEditorBox {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  background-color: #ffffff;
+  border: 1px solid #ddd;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#transSortBox {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  background-color: #ffffff;
+}
+
+.rightSection {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ==================== 分割条样式 ==================== */
+
+/* 垂直分割条 */
+.drag-vertical {
+  width: 3px;
+  cursor: col-resize;
+  position: relative;
+  z-index: 2;
+}
+
+/* 水平分割条 */
+.drag-horizontal {
+  height: 3px;
+  cursor: row-resize;
+  position: relative;
+  z-index: 2;
+}
+
+/* ==================== JSON Editor 样式 ==================== */
+
+.jsoneditor {
+  border: thin solid #c0c4cc;
+}
+
+/* 编辑器面板 */
+#jsonEditorRight,
+#jsonEditorLeft,
+#sortMain {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Ace Editor */
+#aceEditorMenu {
+  flex-shrink: 0;
+}
+
+.aceEditor {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+}
+
+/* 固定高度，防止 tree 模式下挤压 */
+.jsoneditor-tree-inner {
+  min-height: 148px;
+  flex: 1;
+  overflow: auto;
+}
+
+.panel {
+  border: 1px solid #ddd;
+  padding: 20px;
+  overflow: auto;
+}
+
+#leftSection,
+#jsonEditorRightBox,
+#transSortBox {
+  border: 1px solid #ddd;
+}
+
+.jsoneditor-vue {
+  height: 100%;
+}
+
+/* ==================== Element UI 自定义 ==================== */
+
+.el-textarea__inner {
+  color: #000000;
+}
+
+.el-button+.el-button {
+  margin-left: 3px;
+}
+
+.el-button--mini {
+  padding: 3px;
+  margin-left: 4px;
+  font-size: 14px;
+}
+
+.jsonQuery {
+  display: inline-flex;
+  margin-left: 3px;
+}
+
+#jsonQuery {
+  display: inline-flex;
+  height: 100%;
+  padding-left: 3px;
+  padding-right: 3px;
+  color: #000000;
+}
+
+.el-input-group {
+  height: 100%;
+}
+
+/* ==================== 编辑器菜单样式 ==================== */
+
+.editorMenu {
+  display: flex;
+  width: 100%;
+  height: 30px;
+  margin: 0;
+  box-sizing: border-box;
+  color: #fff;
+  background-color: #91b770;
+  border-bottom: 1px solid #91b770;
+  align-items: center;
+}
+
+#editorMenu>.el-select>.el-input {
+  padding: 2px;
+}
+
+#editorMenu input {
+  font-size: 15px;
+  padding-left: 10px;
+}
+
+.editorMenuBtn {
+  background-color: rgba(255, 255, 255, 0);
+  padding: 2px;
+  border-radius: 0;
+  color: #e9f0e2;
+  border: 0;
+  font-weight: 600;
+}
+
+.el-dropdown-menu__item {
+  line-height: 15px;
+  margin-top: 4px;
+}
+
+/* ==================== 字体设置 ==================== */
+
+/* 设置字体，消除特殊字符光标错位 */
+* {
+  font-family: 'JetBrains Mono', 'Consolas', 'Monaco', 'Menlo', 'Ubuntu Mono', monospace !important;
+  word-break: break-all !important;
+  overflow-wrap: break-word !important;
+  line-break: strict !important;
+}
+
+/* ==================== Tree 模式样式 ==================== */
+
+/* treepath checkbox 居中 */
+#jsonEditorRightBox tr td:first-child:not([class=jsoneditor-tree]) {
+  text-align: center;
+  vertical-align: middle;
+}
+
+div.jsoneditor-tree table.jsoneditor-tree {
+  width: auto;
+  vertical-align: middle;
+}
+
+.editorTreeTb {
+  margin: 5px;
+  display: flex;
+}
+
+/* ==================== Diff 对比样式 ==================== */
+
+.el-badge__content.is-fixed {
+  transform: translateY(100%) translateX(-30%);
+  z-index: 9999;
+}
+
+.addDiffLine {
+  background-color: #55de112e;
+}
+
+.addDiffStr {
+  background-color: #67c23a9e;
+}
+
+.removeDiffLine {
+  background-color: #f68b832e;
+  word-break: normal;
+}
+
+.removeDiffStr {
+  background-color: #f56c6c8f;
+}
+
+.replaceDiffLine {
+  background-color: #f6db8378;
+  word-break: normal;
+}
+
+/* ==================== 其他样式 ==================== */
+
+span {
+  user-select: text;
+  pointer-events: auto;
+}
+
+.el-autocomplete {
+  width: 100%;
+}
+
+/* 选中的模式 */
+.modeActive {
+  background-color: #F56C6C !important;
+}
+
+/* JSON Editor 编程语言颜色 */
+.ace-jsoneditor .ace_constant.ace_language {
+  color: #0087ff;
+}
+
+.el-form-item--mini.el-form-item,
+.el-form-item--small.el-form-item {
+  margin: 4px;
+}
+
+/* ==================== 响应式优化 ==================== */
+
+@media (max-width: 1200px) {
+  .leftSection {
+    width: 45%;
+  }
+  
+  .funcsBar {
+    margin-left: 10px;
+    margin-right: 10px;
+  }
+}
+
+@media (max-width: 768px) {
+  .leftSection {
+    width: 100%;
+  }
+  
+  .rightSection {
+    display: none;
+  }
+}
+
+/* ==================== 性能优化 ==================== */
+
+/* GPU 加速 */
+.drag-vertical,
+.drag-horizontal {
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+/* 平滑滚动 */
+.jsoneditor-tree-inner {
+  scroll-behavior: smooth;
+}
+
+/* 减少重绘 */
+.jsoneditor,
+.aceEditor {
+  contain: layout style;
+}

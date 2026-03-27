@@ -1,0 +1,3514 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>JsonTools</title>
+  <link rel="icon" href="logo.png" type="image/png">
+  <link rel="stylesheet" href="./assets/element-ui.css">
+  <link rel="stylesheet" href="./assets/jsoneditor10.2.0.min.css">
+  <link rel="stylesheet" href="./assets/jetbrains-mono/css/jetbrains-mono.css">
+  <link rel="stylesheet" href="./styles/main.css">
+  
+  <!-- 性能优化工具 -->
+  <script src="./scripts/utils/performance.js"></script>
+</head>
+
+<body>
+  <el-container id="app" class="app">
+    <el-header id="funcsBar" class="funcsBar">
+      <el-dropdown class="settings-dropdown" :hide-on-click="false" trigger="click">
+        <el-button type="text" size="mini" title="显示设置">
+          <i class="el-icon-setting" style="font-size: 18px;"></i>
+        </el-button>
+        <el-dropdown-menu slot="dropdown">
+          <el-dropdown-item><el-checkbox v-model="isBoxHidden.funcsBar"
+              @change="hiddenBox">功能栏</el-checkbox></el-dropdown-item>
+          <el-dropdown-item><el-checkbox v-model="isBoxHidden.leftSection"
+              @change="hiddenBox">JSON左</el-checkbox></el-dropdown-item>
+          <el-dropdown-item><el-checkbox v-model="isBoxHidden.jsonEditorRightBox"
+              @change="hiddenBox">JSON右</el-checkbox></el-dropdown-item>
+          <el-dropdown-item><el-checkbox v-model="isBoxHidden.aceEditorBox"
+              @change="hiddenBox">编辑器</el-checkbox></el-dropdown-item>
+        </el-dropdown-menu>
+      </el-dropdown>
+      <el-dropdown :hide-on-click="false" trigger="click">
+        <el-button plain type="success" size="mini">schema
+          <el-tooltip class="item" effect="dark" content="点击查看schema使用说明" placement="top-start">
+            <i class="el-icon-question el-icon-arrow-down el-icon--right" @click="openSchemaLearn"
+              style="cursor: pointer;"></i>
+          </el-tooltip>
+          <i class="el-icon-arrow-down el-icon--right" style="cursor: pointer;"></i>
+        </el-button>
+        <el-dropdown-menu slot="dropdown">
+          <el-dropdown-item>
+            <el-popover placement="right" width="400" trigger="hover">
+              <h4>any</h4>
+              <el-dropdown-item><el-checkbox v-model="schemaOption.any.type">type</el-checkbox></el-dropdown-item>
+              <el-dropdown-item><el-checkbox v-model="schemaOption.any.enum">enum</el-checkbox></el-dropdown-item>
+              <el-dropdown-item><el-checkbox v-model="schemaOption.any.const">const</el-checkbox></el-dropdown-item>
+              <h4>string</h4>
+              <el-dropdown-item><el-checkbox
+                  v-model="schemaOption.string.minLength">minLength</el-checkbox></el-dropdown-item>
+              <el-dropdown-item><el-checkbox
+                  v-model="schemaOption.string.maxLength">maxLength</el-checkbox></el-dropdown-item>
+              <h4>number</h4>
+              <el-dropdown-item><el-checkbox
+                  v-model="schemaOption.number.minimum">minimum</el-checkbox></el-dropdown-item>
+              <el-dropdown-item><el-checkbox
+                  v-model="schemaOption.number.maximum">maximum</el-checkbox></el-dropdown-item>
+              <h4>object</h4>
+              <el-dropdown-item><el-checkbox
+                  v-model="schemaOption.object.properties">properties</el-checkbox></el-dropdown-item>
+              <el-dropdown-item><el-checkbox
+                  v-model="schemaOption.object.required">required</el-checkbox></el-dropdown-item>
+              <el-dropdown-item><el-checkbox
+                  v-model="schemaOption.object.minProperties">minProperties</el-checkbox></el-dropdown-item>
+              <el-dropdown-item><el-checkbox
+                  v-model="schemaOption.object.maxProperties">maxProperties</el-checkbox></el-dropdown-item>
+              <h4>array</h4>
+              <el-dropdown-item><el-checkbox v-model="schemaOption.array.items">items</el-checkbox></el-dropdown-item>
+              <el-dropdown-item><el-checkbox
+                  v-model="schemaOption.array.minItems">minItems</el-checkbox></el-dropdown-item>
+              <el-dropdown-item><el-checkbox
+                  v-model="schemaOption.array.maxItems">maxItems</el-checkbox></el-dropdown-item>
+              <el-dropdown-item><el-checkbox
+                  v-model="schemaOption.array.uniqueItems">uniqueItems</el-checkbox></el-dropdown-item>
+              <div style="text-align: center;">
+                <el-button type="text" @click="resetSchemOption">重置默认</el-button>
+                <el-button type="text" @click="toJsonSchema">确认生成</el-button>
+              </div>
+              <el-button plain type="success" size="mini" slot="reference" @click="toJsonSchema">
+                生成schema
+                <i class="el-icon-arrow-right el-icon--right" style="cursor: pointer;"></i>
+              </el-button>
+            </el-popover>
+          </el-dropdown-item>
+          <el-dropdown-item>
+            <el-button plain type="success" size="mini" @click="schema_validate">schema校验</el-button>
+          </el-dropdown-item>
+          <el-dropdown-item>
+            <el-popover placement="right" width="400" trigger="hover">
+              <h4>any</h4>
+              <el-dropdown-item><el-checkbox v-model="schemaOptionUpdate.any.type">type</el-checkbox></el-dropdown-item>
+              <el-dropdown-item><el-checkbox v-model="schemaOptionUpdate.any.enum">enum</el-checkbox></el-dropdown-item>
+              <el-dropdown-item><el-checkbox
+                  v-model="schemaOptionUpdate.any.const">const</el-checkbox></el-dropdown-item>
+              <h4>string</h4>
+              <el-dropdown-item><el-checkbox
+                  v-model="schemaOptionUpdate.string.minLength">minLength</el-checkbox></el-dropdown-item>
+              <el-dropdown-item><el-checkbox
+                  v-model="schemaOptionUpdate.string.maxLength">maxLength</el-checkbox></el-dropdown-item>
+              <h4>number</h4>
+              <el-dropdown-item><el-checkbox
+                  v-model="schemaOptionUpdate.number.minimum">minimum</el-checkbox></el-dropdown-item>
+              <el-dropdown-item><el-checkbox
+                  v-model="schemaOptionUpdate.number.maximum">maximum</el-checkbox></el-dropdown-item>
+              <h4>object</h4>
+              <el-dropdown-item><el-checkbox
+                  v-model="schemaOptionUpdate.object.properties">properties</el-checkbox></el-dropdown-item>
+              <el-dropdown-item><el-checkbox
+                  v-model="schemaOptionUpdate.object.required">required</el-checkbox></el-dropdown-item>
+              <el-dropdown-item><el-checkbox
+                  v-model="schemaOptionUpdate.object.minProperties">minProperties</el-checkbox></el-dropdown-item>
+              <el-dropdown-item><el-checkbox
+                  v-model="schemaOptionUpdate.object.maxProperties">maxProperties</el-checkbox></el-dropdown-item>
+              <h4>array</h4>
+              <el-dropdown-item><el-checkbox
+                  v-model="schemaOptionUpdate.array.items">items</el-checkbox></el-dropdown-item>
+              <el-dropdown-item><el-checkbox
+                  v-model="schemaOptionUpdate.array.minItems">minItems</el-checkbox></el-dropdown-item>
+              <el-dropdown-item><el-checkbox
+                  v-model="schemaOptionUpdate.array.maxItems">maxItems</el-checkbox></el-dropdown-item>
+              <el-dropdown-item><el-checkbox
+                  v-model="schemaOptionUpdate.array.uniqueItems">uniqueItems</el-checkbox></el-dropdown-item>
+              <div style="text-align: center;">
+                <el-button type="text" @click="resetSchemOptionUpdate">重置默认</el-button>
+                <el-button type="text" @click="updateSchema">确认修正</el-button>
+              </div>
+              <el-button plain type="success" size="mini" slot="reference">修正schema
+                <i class="el-icon-arrow-right el-icon--right" style="cursor: pointer;"></i>
+              </el-button>
+            </el-popover>
+          </el-dropdown-item>
+          <el-dropdown-item><el-button plain type="success" @click="sToJ" size="mini">json &lt;&lt;
+              jsonSchema</el-button></el-dropdown-item>
+        </el-dropdown-menu>
+      </el-dropdown>
+      <el-dropdown :hide-on-click="false">
+        <el-button plain type="success" size="mini">json转换<i class="el-icon-arrow-down el-icon--right"></i></el-button>
+        <el-dropdown-menu slot="dropdown">
+          <h4>json & yaml</h4>
+          <el-dropdown-item><el-button plain type="success" @click="jToY" size="mini">json >>
+              yaml</el-button></el-dropdown-item>
+          <el-dropdown-item><el-button plain type="success" @click="yToJ" size="mini">json &lt;&lt; yaml
+            </el-button></el-dropdown-item>
+          <h4>json & xml</h4>
+          <el-dropdown-item><el-button plain type="success" @click="jToX" size="mini">json >>
+              xml</el-button></el-dropdown-item>
+          <el-dropdown-item><el-button plain type="success" @click="xToJ" size="mini">json &lt;&lt; xml
+            </el-button></el-dropdown-item>
+          <h4>json & properties</h4>
+          <el-dropdown-item><el-button plain type="success" @click="jToP" size="mini">json >>
+              properties</el-button></el-dropdown-item>
+          <el-dropdown-item><el-button plain type="success" @click="pToJ" size="mini">json &lt;&lt; properties
+            </el-button></el-dropdown-item>
+          <h4>json & http query</h4>
+          <el-dropdown-item><el-button plain type="success" @click="jToH" size="mini">json >>
+              http query</el-button></el-dropdown-item>
+          <el-dropdown-item><el-button plain type="success" @click="hToJ" size="mini">json &lt;&lt; http query
+            </el-button></el-dropdown-item>
+        </el-dropdown-menu>
+      </el-dropdown>
+      <el-button id="leftRightSwap" plain type="success" size="mini" @click="leftRightSwap">左右对换</el-button>
+      <el-autocomplete id="jsonQuery" class="jsonQuery" v-model="jsonQueryStr" :fetch-suggestions="querySearch"
+        placeholder="jsonQueryStr" @change="getJsonByQuery('output')">
+        <el-select v-model="jsonQueryMode" slot="prepend" placeholder="请选择查询方式" style="width: 150px;">
+          <el-option :label="'('+jsonEditorActive+')jsonpath'" value="jsonpath">jsonpath
+            <el-tooltip class="item" effect="dark" content="点击查看jsonpath使用说明" placement="top-start">
+              <i class="el-icon-question" @click="openJsonpathLearn" style="cursor: pointer;"></i>
+            </el-tooltip>
+          </el-option>
+          <el-option :label="'('+jsonEditorActive+')jq'" value="jq">jq
+            <el-tooltip class="item" effect="dark" content="点击查看jq使用说明" placement="top-start">
+              <i class="el-icon-question" @click="openJqLearn" style="cursor: pointer;"></i>
+            </el-tooltip>
+          </el-option>
+        </el-select>
+        <el-button slot="append" @click="getJsonByQuery('output')">执行</el-button>
+        <!-- <el-button slot="append" v-if="jsonQueryMode!=='jq'" @click="getJsonByQuery('update')">执行覆盖</el-button> -->
+        <el-button slot="append" v-if="jsonQueryMode==='jsonpath'"
+          @click="replaceJsonByJsonpath('output')">替换</el-button>
+        <!-- <el-button slot="append" v-if="jsonQueryMode==='jsonpath'"
+          @click="replaceJsonByJsonpath('update')">替换覆盖</el-button> -->
+      </el-autocomplete>
+      <el-dropdown :hide-on-click="false">
+        <el-badge :value="jsonDiffCount" :max="999" class="item">
+          <el-button plain type="success" size="mini" @click="jsonDiff">json对比<i
+              class="el-icon-arrow-down el-icon--right"></i></el-button>
+        </el-badge>
+        <el-dropdown-menu slot="dropdown">
+          <el-dropdown-item><el-button v-if="jsonDiffCount > 0"
+              @click="switchDiff('down')">下一个差异</el-button></el-dropdown-item>
+          <el-dropdown-item><el-button v-if="jsonDiffCount === 0" @click="switchDiff('down')"
+              disabled>下一个差异</el-button></el-dropdown-item>
+          <el-dropdown-item><el-button v-if="jsonDiffCount > 0"
+              @click="switchDiff('up')">上一个差异</el-button></el-dropdown-item>
+          <el-dropdown-item><el-button v-if="jsonDiffCount === 0" @click="switchDiff('up')"
+              disabled>上一个差异</el-button></el-dropdown-item>
+          <el-dropdown-item><el-checkbox v-model="isAsyncScrollView">是否同步滑动</el-checkbox></el-dropdown-item>
+          <!-- <el-dropdown-item><el-checkbox v-if="jsonDiffCount === 0" v-model="isAsyncScrollView"
+              disabled>是否同步滑动</el-checkbox></el-dropdown-item> -->
+          <el-dropdown-item><el-button @click="__clearDiffClass">清除对比渲染</el-button></el-dropdown-item>
+        </el-dropdown-menu>
+      </el-dropdown>
+      <el-dropdown :hide-on-click="false" trigger="click">
+        <el-button plain type="success" size="mini">导出<i class="el-icon-arrow-down el-icon--right"></i></el-button>
+        <el-dropdown-menu slot="dropdown">
+          <el-dropdown-item>
+            <el-popover placement="right" width="50" trigger="hover">
+              <el-dropdown-item><el-button @click="exportFile('left', 'txt')">txt</el-button></el-dropdown-item>
+              <el-dropdown-item><el-button @click="exportFile('left', 'json')">json</el-button></el-dropdown-item>
+              <el-dropdown-item><el-button @click="exportFile('left', 'xlsx')">xlsx</el-button></el-dropdown-item>
+              <el-button plain type="success" size="mini" icon="el-icon-download" slot="reference">
+                左边
+                <i class="el-icon-arrow-right el-icon--right" style="cursor: pointer;"></i>
+              </el-button>
+            </el-popover>
+          </el-dropdown-item>
+          <el-dropdown-item>
+            <el-popover placement="right" width="50" trigger="hover">
+              <el-dropdown-item><el-button @click="exportFile('right', 'txt')">txt</el-button></el-dropdown-item>
+              <el-dropdown-item><el-button @click="exportFile('right', 'json')">json</el-button></el-dropdown-item>
+              <el-dropdown-item><el-button @click="exportFile('right', 'xlsx')">xlsx</el-button></el-dropdown-item>
+              <el-button plain type="success" size="mini" icon="el-icon-download" slot="reference">
+                右边
+                <i class="el-icon-arrow-right el-icon--right" style="cursor: pointer;"></i>
+              </el-button>
+            </el-popover>
+          </el-dropdown-item>
+
+          <el-dropdown-item>
+            <el-popover placement="right" width="100px" trigger="hover">
+              <el-dropdown-item><el-button @click="exportFile('ace', 'txt')">txt</el-button></el-dropdown-item>
+              <el-dropdown-item><el-button @click="exportFile('ace', 'json')">json</el-button></el-dropdown-item>
+              <el-dropdown-item><el-button @click="exportFile('ace', 'yaml')">yaml</el-button></el-dropdown-item>
+              <el-dropdown-item><el-button @click="exportFile('ace', 'xml')">xml</el-button></el-dropdown-item>
+              <el-dropdown-item><el-button @click="exportFile('ace', 'html')">html</el-button></el-dropdown-item>
+              <el-dropdown-item><el-button @click="exportFile('ace', 'js')">js</el-button></el-dropdown-item>
+              <el-dropdown-item><el-button @click="exportFile('ace', 'java')">java</el-button></el-dropdown-item>
+              <el-dropdown-item><el-button @click="exportFile('ace', 'py')">py</el-button></el-dropdown-item>
+              <el-dropdown-item><el-button @click="exportFile('ace', 'sql')">sql</el-button></el-dropdown-item>
+              <el-dropdown-item><el-button
+                  @click="exportFile('ace', 'properties')">properties</el-button></el-dropdown-item>
+              <el-button plain type="success" size="mini" icon="el-icon-download" slot="reference">
+                右下
+                <i class="el-icon-arrow-right el-icon--right" style="cursor: pointer;"></i>
+              </el-button>
+            </el-popover>
+          </el-dropdown-item>
+        </el-dropdown-menu>
+      </el-dropdown>
+      <el-dropdown :hide-on-click="false">
+        <el-button plain type="success" size="mini">导入<i class="el-icon-arrow-down el-icon--right"></i></el-button>
+        <el-dropdown-menu slot="dropdown">
+          <el-dropdown-item><el-upload class="upload-demo" ref="upload" accept=".xlsx,.xlx,.json,.txt"
+              :show-file-list="false" :auto-upload="false" action="" :on-change="importFileJson">
+              <el-button slot="trigger" plain type="success" size="mini" icon="el-icon-upload2">左边</el-button>
+            </el-upload></el-dropdown-item>
+          <el-dropdown-item><el-upload class="upload-demo" ref="upload" accept=".xlsx,.xlx,.json,.txt"
+              :show-file-list="false" :auto-upload="false" action="" :on-change="importFileJsonRight">
+              <el-button slot="trigger" plain type="success" size="mini" icon="el-icon-upload2">右边</el-button>
+            </el-upload></el-dropdown-item>
+          <el-dropdown-item><el-upload class="upload-demo" ref="upload"
+              accept=".xlsx,.xlx,.json,.txt,.yaml,.yml,.xml,.html,.js,.java,.py,.sql,.properties"
+              :show-file-list="false" :auto-upload="false" action="" :on-change="importFileAce">
+              <el-button slot="trigger" plain type="success" size="mini" icon="el-icon-upload2">右下</el-button>
+            </el-upload></el-dropdown-item>
+        </el-dropdown-menu>
+      </el-dropdown>
+    </el-header>
+    <el-main>
+      <div id="leftSection" class="leftSection">
+        <div id="jsonEditorLeftBox" ref="jsonEditorLeftBox" class="jsonEditorLeftBox">
+          <div id="jsonMenu" class="editorMenu">
+            <div class="editorMenuBtn">左</div>
+            <el-button id="setModeCodeBtn" type="button" size="mini" class="modeActive editorMenuBtn"
+              @click="setModeCode" style="border: 1px solid white; margin-right: 0;">code</el-button>
+            <el-button id="setModeTreeBtn" type="button" size="mini" class="editorMenuBtn" @click="setModeTree"
+              style="border: 1px solid white; margin-left: 0;">tree</el-button>
+            <el-button v-if="jsonEditorLeftMode === 'code'" id="jsonFormatBtn" type="button" size="mini"
+              class="editorMenuBtn" @click="jsonFormat">格式化</el-button>
+            <el-button v-if="jsonEditorLeftMode === 'code'" id="jsonCompactBtn" type="button" size="mini"
+              class="editorMenuBtn" @click="jsonCompact">压缩</el-button>
+            <div v-if="jsonEditorLeftMode === 'code'"> |</div>
+            <el-button id="jsonCompactBtn" type="button" size="mini" class="editorMenuBtn"
+              @click="toJson">转义</el-button>
+            <el-button id="toObjectBtn" type="button" size="mini" class="editorMenuBtn"
+              @click="toObject">反转义</el-button>
+            <div> |</div>
+            <el-button id="foldAllBtn" type="button" size="mini" class="editorMenuBtn" @click="foldAll">收缩</el-button>
+            <el-button id="unfoldBtn" type="button" size="mini" class="editorMenuBtn" @click="unfold">展开</el-button>
+            <div> |</div>
+            <el-button id="transJsonBtn" type="button" size="mini" class="editorMenuBtn"
+              @click="__openTransSortJsonBox">筛选</el-button>
+            <div> |</div>
+            <el-button v-if="jsonEditorLeftMode==='code'" id="sortJsonByKeyBtn" type="button" size="mini"
+              class="editorMenuBtn" @click="__openTransSortJsonBox">排序</el-button>
+            <el-input v-if="jsonEditorLeftMode === 'tree'" placeholder="请输入搜索内容" size="mini"
+              v-model="jsonLeftTreeSearchStr" @change="treeSearch('jsonEditorLeft')"
+              @keyup.enter.native="treeSearch('jsonEditorLeft')" style="width: 30%; margin-left: auto;">
+            </el-input>
+          </div>
+          <div id="jsonEditorLeft" ref="jsonEditorLeft" class="jsonEditorLeft"></div>
+        </div>
+        <div id="transSortBox">
+          <div id="transSortHeader" class="editorMenu">
+            <div v-if="transOrSort==='trans'">{{transJsonEditorName}} 筛选</div>
+            <div v-if="transOrSort==='sort'">{{transJsonEditorName}} 排序</div>
+            <el-button class="editorMenuBtn" style="position: absolute; right: 0; margin-right: 5px;"
+              icon="el-icon-close" @click="__closeBox('transSortBox')"></el-button>
+            <el-button v-if="transOrSort==='trans'" class="editorMenuBtn"
+              style="position: absolute; right: 20px; margin-right: 5px;" icon="el-icon-refresh"
+              @click="cleanTransJsonConditions">清空</el-button>
+          </div>
+          <div id="transSortMain">
+            <el-form v-if="transOrSort==='trans'" ref="transForm" label-width="100px" label-position="left">
+              <el-form-item label="path" size="mini">
+                <template #label>
+                  <span>
+                    <!-- <i class="el-icon-sort"></i>  -->
+                    path
+                  </span>
+                </template>
+                <el-select v-model="queryOptions.path.field" placeholder="请选择 基础的key" @change="transJson" clearable
+                  filterable collapse-tags>
+                  <el-option v-for="jsonKey in transPaths" :key="jsonKey" :label="jsonKey" :value="jsonKey">
+                  </el-option>
+                </el-select>
+              </el-form-item>
+              <el-form-item label="filter" size="mini">
+                <template #label>
+                  <span>
+                    <!-- <i class="el-icon-sort"></i>  -->
+                    filter
+                  </span>
+                </template>
+                <el-select v-model="queryOptions.filter.field" placeholder="请选择 过滤的key" @change="transJson" clearable
+                  filterable>
+                  <el-option v-for="jsonKey in transFilterPaths" :key="jsonKey" :label="jsonKey" :value="jsonKey">
+                  </el-option>
+                </el-select>
+                <el-select v-model="queryOptions.filter.relation" style="width: 100px;" @change="transJson" clearable>
+                  <el-option label="==" value="=="></el-option>
+                  <el-option label="!=" value="!="></el-option>
+                  <el-option label="<" value="<"></el-option>
+                  <el-option label="<=" value="<="></el-option>
+                  <el-option label=">" value=">"></el-option>
+                  <el-option label=">=" value=">="></el-option>
+                </el-select>
+                <el-input v-model="queryOptions.filter.value" placeholder="请输入 过滤的值" style="width: 200px;"
+                  @change="transJson" clearable></el-input>
+              </el-form-item>
+              <el-form-item label="sort" size="mini">
+                <template #label>
+                  <span>
+                    <!-- <i class="el-icon-sort"></i>  -->
+                    sort
+                  </span>
+                </template>
+                <el-select v-model="queryOptions.sort.field" placeholder="请选择 排序的key" @change="transJson" clearable
+                  filterable>
+                  <el-option v-for="jsonKey in transSortPaths" :label="jsonKey" :value="jsonKey">
+                  </el-option>
+                </el-select>
+                <el-select v-model="queryOptions.sort.direction" @change="transJson" clearable>
+                  <el-option label="asc" value="asc"></el-option>
+                  <el-option label="desc" value="desc"></el-option>
+                </el-select>
+              </el-form-item>
+              <el-form-item label="pick" size="mini">
+                <template #label>
+                  <span>
+                    <!-- <i class="el-icon-sort"></i>  -->
+                    pick
+                  </span>
+                </template>
+                <el-select v-model="queryOptions.projection.fields" placeholder="请选择 获取的key" @change="transJson"
+                  clearable filterable multiple collapse-tags>
+                  <el-option v-for="jsonKey in transProjectionPaths" :key="jsonKey" :label="jsonKey" :value="jsonKey">
+                  </el-option>
+                </el-select>
+              </el-form-item>
+            </el-form>
+            <el-form v-if="transOrSort==='sort'" ref="sortForm" label-width="100px" label-position="left">
+              <el-form-item label="sort" size="mini">
+                <template #label>
+                  <span>
+                    <!-- <i class="el-icon-sort"></i>  -->
+                    sort
+                  </span>
+                </template>
+                <el-select v-model="sortOptions.field" placeholder="请选择 排序的key" @change="sortJsonByKey" clearable
+                  filterable>
+                  <el-option v-for="jsonKey in sortPaths" :label="jsonKey" :value="jsonKey">
+                  </el-option>
+                </el-select>
+                <el-select v-model="sortOptions.direction" @change="sortJsonByKey" clearable>
+                  <el-option label="asc" value="asc"></el-option>
+                  <el-option label="desc" value="desc"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-form>
+          </div>
+        </div>
+      </div>
+      <!-- 垂直分割条 -->
+      <div class="drag-vertical"></div>
+      <div id="rightSection" class="rightSection">
+        <div id="jsonEditorRightBox" ref="jsonEditorRightBox" class="jsonEditorRightBox">
+          <div id="jsonRightMenu" class="editorMenu">
+            <div class="editorMenuBtn">右</div>
+            <el-button id="setModeCodeBtn" type="button" size="mini" class="modeActive editorMenuBtn"
+              @click="setModeCode" style="border: 1px solid white; margin-right: 0;">code</el-button>
+            <el-button id="setModeTreeBtn" type="button" size="mini" class="editorMenuBtn" @click="setModeTree"
+              style="border: 1px solid white; margin-left: 0;">tree</el-button>
+            <el-button v-if="jsonEditorRightMode === 'code'" id="jsonFormatBtn" type="button" size="mini"
+              class="editorMenuBtn" @click="jsonFormat">格式化</el-button>
+            <el-button v-if="jsonEditorRightMode === 'code'" id="jsonCompactBtn" type="button" size="mini"
+              class="editorMenuBtn" @click="jsonCompact">压缩</el-button>
+            <div v-if="jsonEditorRightMode === 'code'"> |</div>
+            <el-button id="jsonCompactBtn" type="button" size="mini" class="editorMenuBtn"
+              @click="toJson">转义</el-button>
+            <el-button id="toObjectBtn" type="button" size="mini" class="editorMenuBtn"
+              @click="toObject">反转义</el-button>
+            <div> |</div>
+            <el-button id="foldAllBtn" type="button" size="mini" class="editorMenuBtn" @click="foldAll">收缩</el-button>
+            <el-button id="unfoldBtn" type="button" size="mini" class="editorMenuBtn" @click="unfold">展开</el-button>
+            <div> |</div>
+            <el-button id="transJsonBtn" type="button" size="mini" class="editorMenuBtn"
+              @click="__openTransSortJsonBox">筛选</el-button>
+            <div> |</div>
+            <el-button v-if="jsonEditorRightMode==='code'" id="sortJsonByKeyBtn" type="button" size="mini"
+              class="editorMenuBtn" @click="__openTransSortJsonBox">排序</el-button>
+            <el-input v-if="jsonEditorRightMode === 'tree'" placeholder="请输入搜索内容" size="mini"
+              v-model="jsonRightTreeSearchStr" @change="treeSearch('jsonEditorRight')"
+              @keyup.enter.native="treeSearch('jsonEditorRight')" style="width: 30%; margin-left: auto;">
+            </el-input>
+          </div>
+          <div id="jsonEditorRight" ref="jsonEditorRight" class="jsonEditorRight"></div>
+        </div>
+        <!-- 水平分割条 -->
+        <div class="drag-horizontal"></div>
+        <div id="aceEditorBox" ref="aceEditorBox" class="aceEditorBox">
+          <div id="aceEditorMenu" class="editorMenu">
+            <el-dropdown :hide-on-click="false" trigger="click">
+              <el-button type="button" size="mini" class="editorMenuBtn">
+                {{ (aceModes.find(m => m.value === aceLanguage) || {}).label || '语言' }}<i class="el-icon-arrow-down el-icon--right"></i>
+              </el-button>
+              <el-dropdown-menu slot="dropdown">
+                <el-dropdown-item v-for="item in aceModes" :key="item.value" @click.native="aceLanguage = item.value">
+                  {{ item.label }}
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </el-dropdown>
+            <el-button id="beautifyBtn" type="button" size="mini" class="editorMenuBtn"
+              @click="beautifyContent">美化</el-button>
+            <div> |</div>
+            <el-button id="base64DecodeBtn" type="button" size="mini" class="editorMenuBtn"
+              @click="base64Decode">Base64解码</el-button>
+            <el-button id="urlDecodeBtn" type="button" size="mini" class="editorMenuBtn"
+              @click="urlDecode">URL解码</el-button>
+            <!-- <div v-if="transJsonEditorName">&nbsp;&nbsp;查询方式: {{jsonQueryMode}}-></div> -->
+            <!-- <el-button v-if="transJsonEditorName" id="jmesQueryOutputBtn" class="editorMenuBtn"
+              @click="getJsonByQuery('output')">执行输出</el-button>
+            <el-button v-if="transJsonEditorName" id="jmesQueryUpdateBtn" class="editorMenuBtn"
+              @click="getJsonByQuery('update')">执行覆盖</el-button>
+            <el-button v-if="jsonQueryMode==='jsonpath' && opName==='replaceJsonByJsonpath'" class="editorMenuBtn"
+              @click="replaceJsonByJsonpath('output')">替换输出</el-button>
+            <el-button v-if="jsonQueryMode==='jsonpath' && opName==='replaceJsonByJsonpath'" class="editorMenuBtn"
+              @click="replaceJsonByJsonpath('update')">替换覆盖</el-button> -->
+            <!-- <el-button v-if="jsonQueryMode === 'jmesPath' | jsonQueryMode === 'jq'" id="jmesQueryUpdateBtn"
+              class="editorMenuBtn">执行</el-button> -->
+          </div>
+          <div id="aceEditor" class="aceEditor"></div>
+        </div>
+      </div>
+    </el-main>
+  </el-container>
+</body>
+<script src="./assets/vue2.js"></script>
+<script src="./assets/element-ui.js"></script>
+<script src="./assets/jquery.js"></script>
+<script src="./assets/jsoneditor10.2.0.min.js"></script>
+<script src="./assets/jsonpath.cjs"></script>
+<script src="./assets/jsonpath.min.js"></script>
+<script src="./assets/ace/ace.js"></script>
+<script src="./assets/ace/ext-beautify.js"></script>
+<script src="./assets/ace/ext-language_tools.js"></script>
+<script src="./assets/ace/ext-searchbox.js"></script>
+<script src="./assets/xml2json.js"></script>
+<script src="./assets/deep-diff1.0.2.min.js"></script>
+<script src="./assets/fast-json-patch.js"></script>
+<script src="./assets/diff-match-patch.js"></script>
+<script src="./assets/xlsx.js"></script>
+<script src="./assets/jsonSchemaFaker.js"></script>
+<script src="./assets/lossless-json.min.js"></script>
+<script src="./toJsonSchema.js"></script>
+<script src="./editorUtils.js"></script>
+<script src="./utils.js"></script>
+<!-- <script src="./MyJSONEditor.js"></script> -->
+<script>
+  // ace引入三方组件
+  const beautify = ace.require("ace/ext/beautify");
+  ace.require("ace/ext/language_tools");
+  ace.require("ace/ext/searchbox");
+  var vm = new Vue({
+    el: '#app',
+    data() {
+      return {
+        opName: "",
+        jsonEditorLeft: undefined,
+        jsonEditorLeftMode: "code",
+        jsonEditorRight: undefined,
+        jsonEditorRightMode: "code",
+        jsonRightClassNameMap: {},
+        jsonRightClassNameMapStr: "",
+        jsonRightTreeSelectedArray: [],
+        jsonEditorActive: "左",
+        jsonQueryMode: "jsonpath",
+        jsonDiffCount: undefined,
+        jsonDiffPatchList: [],
+        jsonDiffLastIndex: 0,
+        jsonEditorLeftDiffData: {},
+        jsonEditorLeftDiffLineData: {},
+        jsonEditorRightDiffData: {},
+        jsonEditorRightDiffLineData: {},
+        isAsyncScrollView: false,
+        _autoDiffTimer: null,
+        jsonLeftStr: "{\"name\":\"Json 生成 J2025年7月24日22:45:32sonSchema\", \"imageUrl\":\"https://img0.baidu.com/it/u=113896009,2776238772&fm=253&fmt=auto&app=138&f=JPEG?w=750&h=500\", \"age\":2023,\"account_balance\":0.0601,\"cost\":231.00,\"isOnline\":false,\"salary\":null,\"emptyArray\":[],\"emptyObject\":{},\"address\":{\"htmlAndLatex\":\"<p>“电磁橇”做匀减速运动时<img src=\\\"https://img0.baidu.com/it/u=113896009,2776238772&fm=253&fmt=auto&app=138&f=JPEG?w=750&h=500\\\">的加速度大小<i>a</i><sub>2</sub>=<span class=\\\"qyx-latex\\\" data-name=\\\"math\\\">$$\\\\left|\\\\frac{v_{16}-v_{15}}{\\\\Delta t}\\\\right|$$</span>=<span class=\\\"qyx-latex\\\" data-name=\\\"math\\\">$$\\\\left|\\\\frac{45.6-74.8}{9.06-8.33}\\\\right|$$</span> m/s<sup>2</sup>=40 m/s<sup>2</sup><br>设“电磁橇”的最大速度为<i>v</i>，加速阶段有<i>v</i>=<i>v</i><subld\\\" attr-type=\\\"field\\\" attr-method=\\\"0\\\" attr-key=\\\"1911😊5978190👍97276419\\\" attr-🎈pre=\\\"\\\" attr-index=\\\"1\\\" attr-info=\\\"[第一个1] 选择\\\">（　　）</span></p>\",\"bigintString\":\"12345678901234567890123\",\"zip\":\"1.0.6\",\"bigint\":12345678901234567890123,\"fullWidth\":{\"1\":\"1Ⅱ3Ⅲ的Ⅺ是X否x★祥☆urcerectl〗如【⌚❌⏳✨】“”1234Հ56【空 格】2【x✅x】\",\"2\":\"△β壹亅æけむㅙㅊЮ╋╱۞😁1Й┰︼【全角　空格】①㎡∑‰öēㄇ靐龘だ\",\"3\":\"1V̇,,🚵‍♂️,,\"},\"phone\":[{\"type\":\"home\",\"num\":22.00},{\"type\":\"mobdsaaaaaaafdsssssssssssssssssssssss对我个人而言，随机一段废话不仅仅是一个重大的事件，还可能会改变我的人生. 我们不妨可以这样来想: 一般来说, 一般来说, 要想清楚, 随机一段废话, 到底是一种怎么样的存在. 我认为, 从这个角度来看, 笛卡儿在不经意间这样说过, 阅读一切好书如同和过去最杰出的人谈话。这不禁令我深思. ,ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss一般来说, 我们不得不面对一个非常尴尬的事实, 那就是, 随机一段废话的发生, 到底需要如何做到, 不x的发生ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss\\nsssssssssssssssssssssssssssssssssssssssssile\",\"num\":33.01},{\"type\":\"home\",\"num\":44},{\"type\":\"home\",\"num\":22.0001}]},\"phone\":[{\"type\":\"mobile\",\"num\":\"555-1234\"},{\"type\":\"home\",\"num\":55.00},[1.00,2.99,3,0.004],[\"1\",\"2.00\",3,4,{\"5\":5.00,\"6\":6.01},[7,8.00]]],\"type\":\"home\",\"num\":11}",
+        jsonRightStr: "{}",
+        jsonpathLeftMap: new Map(),
+        jsonEditorLeftJsonpathLineDict: {},
+        jsonpathRightMap: new Map(),
+        jsonEditorRightJsonpathLineDict: {},
+        jsonQueryStr: "",
+        jsonQueryStrHistorys: [],
+        jsonQueryStrList: [
+          { "value": "" }
+        ],
+        jsonLeftTreeSearchStr: "",
+        jsonRightTreeSearchStr: "",
+        aceEditor: undefined,
+        aceModes: [
+          {
+            label: "text",
+            value: "ace/mode/text"
+          },
+          {
+            label: "json",
+            value: "ace/mode/json"
+          },
+          {
+            label: "yaml",
+            value: "ace/mode/yaml"
+          },
+          {
+            label: "sql",
+            value: "ace/mode/sql"
+          },
+          {
+            label: "javascript",
+            value: "ace/mode/javascript"
+          },
+          {
+            label: "html",
+            value: "ace/mode/html"
+          },
+          {
+            label: "java",
+            value: "ace/mode/java"
+          },
+          {
+            label: "python",
+            value: "ace/mode/python"
+          },
+          {
+            label: "properties",
+            value: "ace/mode/properties"
+          },
+          {
+            label: "xml",
+            value: "ace/mode/xml"
+          }
+        ],
+        aceLanguage: "ace/mode/javascript",
+        aceTheme: "xcode",
+        elStylesDisplay: {
+          funcsBar: "",
+          leftSection: "",
+          transSortBox: "",
+          rightSection: "",
+          jsonEditorRightBox: "",
+          aceEditorBox: ""
+        },
+        isBoxHidden: {
+          funcsBar: false,
+          leftSection: false,
+          transSortBox: true,
+          rightSection: false,
+          jsonEditorRightBox: false,
+          aceEditorBox: false
+        },
+        schemaOption: {
+          any: {
+            type: true,
+            enum: false,
+            const: true
+          },
+          string: {
+            minLength: false,
+            maxLength: false
+          },
+          number: {
+            minimum: false,
+            maximum: false
+          },
+          object: {
+            properties: true,
+            required: true,
+            minProperties: false,
+            maxProperties: false
+          },
+          array: {
+            items: true,
+            minItems: false,
+            maxItems: false,
+            uniqueItems: false
+          }
+        },
+        schemaOptionUpdate: {
+          any: {
+            type: true,
+            enum: false,
+            const: true
+          },
+          string: {
+            minLength: false,
+            maxLength: false
+          },
+          number: {
+            minimum: false,
+            maximum: false
+          },
+          object: {
+            properties: true,
+            required: true,
+            minProperties: false,
+            maxProperties: false
+          },
+          array: {
+            items: true,
+            minItems: false,
+            maxItems: false,
+            uniqueItems: false
+          }
+        },
+        transOrSort: "",
+        transJsonEditorName: "",
+        transPaths: [],
+        transFilterPaths: [],
+        transSortPaths: [],
+        transProjectionPaths: [],
+        queryOptions: {
+          path: {
+            field: "",
+          },
+          filter: {
+            field: "",
+            relation: "",
+            value: ""
+          },
+          sort: {
+            field: "",
+            // by: "value",
+            direction: "desc",
+          },
+          projection: {
+            fields: []
+          }
+        },
+        sortPaths: ["all"],
+        sortOptions: {
+          field: "",
+          direction: "asc",
+        },
+        bigintNode: {},
+      }
+    },
+    methods: {
+      // 关闭box
+      __closeBox(boxName) {
+        this.isBoxHidden[boxName] = true;
+        if (boxName === "transSortBox") {
+          // 清空名字，好让 aceEditorMenu 的按钮进行判断
+          this.transJsonEditorName = "";
+          this.isBoxHidden.aceEditorBox = true;
+        }
+      },
+      // format 格式化
+      jsonFormat(editorOrEditorEl) {
+        // console.log("jsonFormat");
+        let editor = editorOrEditorEl;
+        // 判断是否是给的元素
+        if (editorOrEditorEl.currentTarget) {
+          if ($(event.currentTarget).parents("#leftSection").length >= 1) {
+            editor = this.jsonEditorLeft;
+          } else {
+            editor = this.jsonEditorRight;
+          }
+        }
+        const jsonData = editor.getText();
+        if (jsonData) {
+          aceEditorInsertData(editor.aceEditor, LosslessJSON.parse(jsonData));
+        }
+      },
+      // compact 压缩
+      jsonCompact(editorOrEditorEl) {
+        // console.log("jsonCompact");
+        editor = editorOrEditorEl;
+        // 判断是否是给的元素
+        if (editorOrEditorEl.currentTarget) {
+          if ($(event.currentTarget).parents("#leftSection").length >= 1) {
+            editor = this.jsonEditorLeft;
+          } else {
+            editor = this.jsonEditorRight;
+          }
+        }
+        const jsonData = LosslessJSON.parse(editor.getText());
+        if (jsonData) {
+          editor.updateText(myJsonStringify(jsonData, null, 0));
+          editor.aceEditor.clearSelection();
+        }
+      },
+      querySearch(queryString, cb) {
+        // 调用 callback 返回建议列表的数据
+        const a = this.jsonQueryStrList;
+        cb(a);
+      },
+      // 初始化数据，从 utools.db 读取
+      initUtoolsData() {
+        if (typeof utools !== "undefined") {
+          if (
+            utools.db.get("schemaOption")
+            && utools.db.get("schemaOption").data
+            && JSON.stringify(buildPathMap(utools.db.get("schemaOption").data)) === JSON.stringify(buildPathMap(this.schemaOption))
+          ) {
+            this.schemaOption = utools.db.get("schemaOption").data;
+          }
+          if (
+            utools.db.get("schemaOptionUpdate")
+            && utools.db.get("schemaOptionUpdate").data
+            && JSON.stringify(buildPathMap(utools.db.get("schemaOptionUpdate").data)) === JSON.stringify(buildPathMap(this.schemaOptionUpdate))
+          ) {
+            this.schemaOptionUpdate = utools.db.get("schemaOptionUpdate").data;
+          }
+          if (
+            utools.db.get("isBoxHidden")
+            && utools.db.get("isBoxHidden").data
+            && JSON.stringify(Object.fromEntries(buildPathMap(utools.db.get("isBoxHidden").data))) === JSON.stringify(Object.fromEntries(buildPathMap(this.isBoxHidden)))
+          ) {
+            this.isBoxHidden = utools.db.get("isBoxHidden").data;
+            // 初始化这里，默认把排序隐藏了
+            this.isBoxHidden.transSortBox = true;
+          }
+        }
+        this.hiddenBox();
+      },
+      // 把 utools 输入框的数据放到 jsonEditorLeft 
+      initJsonDataByUtoolsData() {
+        if (typeof utools !== "undefined") {
+          utools.onPluginEnter(({ code, type, payload }) => {
+            // console.log("utools.onPluginEnter", payload);
+
+            try {
+              // 能够转义，就转义
+              this.jsonEditorLeft.aceEditor.setValue(LosslessJSON.stringify(LosslessJSON.parse(payload), null, 2));
+              // console.log("utools.onPluginEnter", payload);
+            } catch (error) {
+              // 转义异常，就放入原文
+              this.jsonEditorLeft.aceEditor.setValue(payload);
+            }
+          })
+        }
+      },
+      // 初始化 json_editor
+      initJsonEditor(el_id) {
+        // create the editor
+        const container = document.getElementById(el_id);
+        const options = {
+          // modes: ['preview', 'view', 'form', 'text', 'code', 'tree'],
+          modes: ['code', 'tree'],
+          // 字体（只有这个字体可以解决 等宽字体 遇见特殊字符 带来的光标错位）
+          // fontFamily: "Consolas",
+          // lineNumbers: true,
+          mainMenuBar: false,
+          // useTextareaForIME: true,
+          // 关闭连字功能
+          // enableLigatures: false,
+          search: true,
+        };
+
+        // 监控 选中的时候，获取 jsonpath/jq 路径
+        options.onTextSelectionChange = function (row, col, text) {
+          let path;
+          if (el_id === "jsonEditorLeft") {
+            vm.jsonEditorActive = '左';
+            path = getJsonpathByLine(vm.jsonEditorLeft, row.row);
+          } else if (el_id === "jsonEditorRight") {
+            vm.jsonEditorActive = '右';
+            path = getJsonpathByLine(vm.jsonEditorRight, row.row);
+          }
+          // 根据当前模式转换路径格式
+          if (path) {
+            if (vm.jsonQueryMode === "jq") {
+              // jsonpath → jq
+              if (path === "$") {
+                vm.jsonQueryStr = ".";
+              } else if (path.startsWith("$.")) {
+                vm.jsonQueryStr = path.substring(1);
+              } else if (path.startsWith("$[")) {
+                vm.jsonQueryStr = "." + path.substring(1);
+              } else {
+                vm.jsonQueryStr = path;
+              }
+            } else {
+              vm.jsonQueryStr = path;
+            }
+          }
+        }
+
+        // set json
+        if (el_id.toLowerCase().indexOf("right") !== -1) {
+          if (this.jsonEditorRight === undefined) {
+            this.jsonEditorRight = new JSONEditor(container, options);
+          }
+          this.jsonEditorRight.setName("jsonEditorRight");
+          aceEditorInsertData(this.jsonEditorRight.aceEditor, LosslessJSON.parse(this.jsonRightStr));
+          if (dataType(this.jsonEditorRight.get()) === "object" || dataType(this.jsonEditorRight.get()) === "array") {
+            [this.jsonpathRightMap, this.jsonEditorRightJsonpathLineDict] = buildPathMap(this.jsonEditorRight.get());
+          }
+          this.__addEditorWatchEvent("jsonEditorRight");
+        } else {
+          if (this.jsonEditorLeft === undefined) {
+            this.jsonEditorLeft = new JSONEditor(container, options);
+          }
+          this.jsonEditorLeft.setName("jsonEditorLeft");
+          aceEditorInsertData(this.jsonEditorLeft.aceEditor, LosslessJSON.parse(this.jsonLeftStr));
+          if (dataType(this.jsonEditorLeft.get()) === "object" || dataType(this.jsonEditorLeft.get()) === "array") {
+            [this.jsonpathLeftMap, this.jsonEditorLeftJsonpathLineDict] = buildPathMap(this.jsonEditorLeft.get());
+          }
+          this.__addEditorWatchEvent("jsonEditorLeft");
+        }
+      },
+      initAceEditor() {
+        this.aceEditor = ace.edit("aceEditor");
+        //设置风格和语言（更多风格和语言，请到github上相应目录查看）
+        this.aceEditor.setTheme("ace/theme/" + this.aceTheme);
+        this.aceEditor.session.setMode("ace/mode/" + this.aceLanguage);
+        //字体大小
+        this.aceEditor.setFontSize(14);
+        //设置只读（true时只读，用于展示代码）
+        this.aceEditor.setReadOnly(false);
+        //自动换行,设置为off关闭
+        this.aceEditor.setOption("wrap", "free")
+        // //启用提示菜单
+        // this.aceEditor.require("ace/ext/language_tools");
+        // ace.require("ace/ext/language_tools");
+        //去除中间的竖线
+        // this.aceEditor.renderer.displayIndentGuides(false);
+        this.aceEditor.setOptions({
+          // 字体（只有这个字体可以解决 等宽字体带来的光标错位）
+          // fontFamily: "Consolas",
+          // 基础自动完成
+          enableBasicAutocompletion: true,
+          // 代码块
+          enableSnippets: true,
+          // 实时自动完成
+          enableLiveAutocompletion: true,
+          // 显示行号
+          showLineNumbers: true,
+          // 连字功能
+          enableLigatures: false
+        });
+        this.aceEditor.$blockScrolling = Infinity;
+        // this.aceEditor.session.on('change', (delta) => {
+        //   // if
+        //   const newStr = delta.lines.join("\n");
+        //   if (this.transJsonEditorName && this.jsonQueryStr.replaceAll(/\n|\t| /g, "") !== newStr.replaceAll(/\n|\t| /g, "")) {
+        //     this.jsonQueryMode = "jmespath";
+        //     this.jsonQueryStr = this.aceEditor.getValue().replaceAll(/\n|\t/g, "");
+        //   }
+        // });
+      },
+
+      // 监控editor的事件
+      __addEditorWatchEvent(editorName) {
+        let editorObj = {
+          editor: undefined,
+          editorName: editorName
+        };
+        if (editorName === "jsonEditorLeft") {
+          editorObj.editor = this.jsonEditorLeft;
+        } else if (editorName === "jsonEditorRight") {
+          editorObj.editor = this.jsonEditorRight;
+        }
+        // 监控模式变化
+        editorObj.editor.options.onModeChange = function () {
+          // 这里不能用 this ，此时是访问不到 this 的
+          if (editorName === "jsonEditorLeft") {
+            window.vm.jsonEditorLeftMode = window.vm.jsonEditorLeft.getMode();
+          } else if (editorName === "jsonEditorRight") {
+            window.vm.jsonEditorRightMode = window.vm.jsonEditorRight.getMode();
+          }
+        }
+
+        // 监控粘贴操作，格式化json（因为有些json不规范，导致pathMap不准确）
+        editorObj.editor.aceEditor.on('paste', (delta) => {
+          // console.log("paste")
+          try {
+            setTimeout(() => {
+              this.opName = 'paste';
+              myJsonParse(editorObj.editor.aceEditor.getValue());
+              if (editorName === "jsonEditorLeft") {
+                [this.jsonpathLeftMap, this.jsonEditorLeftJsonpathLineDict] = buildPathMap(editorObj.editor.get());
+              } else if (editorName === "jsonEditorRight") {
+                [this.jsonpathRightMap, this.jsonEditorRightJsonpathLineDict] = buildPathMap(editorObj.editor.get());
+              }
+              aceEditorInsertData(editorObj.editor.aceEditor, LosslessJSON.parse(editorObj.editor.aceEditor.getValue()));
+              // 对比模式下自动重新对比
+              if (this.opName === "jsonDiff" || this.jsonDiffCount > 0) {
+                this.__debouncedAutoDiff();
+              }
+            }, 80);
+          } catch (error) {
+            throw error;
+          }
+        });
+
+        // 监控jsonData变化，每次变化都要更新pathMap
+        editorObj.editor.aceEditor.on('change', (delta) => {
+          // console.log("change", delta)
+          if (editorObj.editor.aceEditor.getValue() === "" || editorObj.editor.aceEditor.getValue() === "{}") return;
+          // 检查变化的内容是否影响到了 jsonpaths（key变化、行数变化）
+          const { start, end } = delta;
+          const newContent = editorObj.editor.aceEditor.session.getTextRange({ start, end });
+          const newFirstLineContent = editorObj.editor.aceEditor.session.getLine(start.row); // 变化后的内容
+          const newkey = newFirstLineContent.split('": ')[0].slice(1);
+          const newkeyColum = newkey.length;
+          const newkeyIndent = countLeadingSpaces(newkey);
+          // 单行更新
+          if (start.row === end.row) {
+            // 更新内容在key外面，不影响paths
+            if (start.column > newkeyColum) return;
+            if (end.column < newkeyColum && start.column <= newkeyIndent * 2 + 1) return;
+          } else {  // 多行更新
+            // 不包含 key，不影响paths
+            if (!/ {0,}".*?": /g.test(newContent)) return;
+          }
+          try {
+            setTimeout(async () => {
+              const jsonStr = myJsonStringify(LosslessJSON.parse(editorObj.editor.getText()), null, 2);
+              // editorObj.editor.updateText(jsonStr);
+              // aceEditorInsertData(editorObj.editor.aceEditor, jsonStr);
+              // 更新jsonpathMap
+              if (editorName === "jsonEditorLeft") {
+                [this.jsonpathLeftMap, this.jsonEditorLeftJsonpathLineDict] = buildPathMap(editorObj.editor.get());
+                if (this.transJsonEditorName === "JSON左") {
+                  this.transPaths = await this.__getTransJsonpaths(this.jsonpathLeftMap, false);
+                }
+              } else if (editorName === "jsonEditorRight") {
+                [this.jsonpathRightMap, this.jsonEditorRightJsonpathLineDict] = buildPathMap(editorObj.editor.get());
+                if (this.transJsonEditorName === "JSON右") {
+                  this.transPaths = await this.__getTransJsonpaths(this.jsonpathRightMap, false);;
+                }
+              }
+              // 更新排序用的jsonpaths，但是要忽略 projection 选项
+              try {
+                if (!this.queryOptions.projection.fields.length > 0) {
+                  await this.__updateTransJsonpaths(editorObj.editor.get(), this.queryOptions);
+                }
+              } catch (error) {
+              }
+              // 更新操作名称，可以清除jsonDiff的标记
+              if (this.opName === "jsonDiff") {
+                this.opName = "";
+              }
+              // 对比模式下自动重新对比
+              if (this.jsonDiffCount > 0 || this.opName === "jsonDiff") {
+                this.__debouncedAutoDiff();
+              }
+            }, 90);
+          } catch (error) {
+            throw error;
+          }
+        });
+        let scrollTimer = null;
+
+        // 渲染jsonDiff
+        editorObj.editor.aceEditor.session.on('changeScrollTop', (delta) => {
+          this.diffRender();
+          // 清除之前的计时器
+          clearTimeout(scrollTimer);
+
+          // 设置新的计时器
+          scrollTimer = setTimeout(() => {
+            // 在这里执行滚动结束后的操作
+            this.__syncScroll(editorObj.editor);
+            this.diffRender();
+          }, 100);
+        });
+
+        // 监控折叠事件，渲染jsonDiff
+        editorObj.editor.aceEditor.session.on('changeFold', (delta) => {
+          scrollTimer = setTimeout(() => {
+            this.diffRender();
+          }, 110);
+        });
+
+        // 监控 tree 模式下 className 变化
+        editorObj.editor.options.onClassName = function ({ path, field, value }) {
+          // console.log("onClassName", path, field, value);
+          // 避免特殊字符被占用，所以选用 ▶ 这个作为 JSONpath 的 分隔符
+          let pathStr = `${editorObj.editor.container.id}▶`
+          pathStr = pathStr + path.join("▶");
+          if (dataType(value) === "object" & path.length > 0 & field !== "properties") {
+            window.vm.$set(window.vm.jsonRightClassNameMap, pathStr, dataType(value))
+          } else {
+            window.vm.$set(window.vm.jsonRightClassNameMap, pathStr, false)
+          }
+          if (dataType(value) === "bigint") {
+            value = BigInt(value);
+          }
+          if (dataType(value) === "number") {
+            value = Number(value);
+          }
+          window.vm.jsonRightClassNameMapStr = JSON.stringify(window.vm.jsonRightClassNameMap);
+          return pathStr;
+        }
+
+        // 监控该事件，获取当前行的 value 是否是 bigint；拿数据 给 onNodeName 事件 修改显示的数据
+        editorObj.editor.options.onEditable = function ({ path, field, value }) {
+          // console.log("onEditable", path, field, value);
+          if (!path || path.length === 0) {
+            return true;
+          }
+          let jsonData;
+          let onNodeName;
+          if (editorName === "jsonEditorLeft") {
+            jsonData = LosslessJSON.parse(vm.jsonLeftStr);
+            onNodeName = "jsonEditor▶" + path.join("▶");
+          } else if (editorName === "jsonEditorRight") {
+            jsonData = LosslessJSON.parse(vm.jsonRightStr);
+            onNodeName = "jsonEditorRight▶" + path.join("▶");
+          }
+          let jsonpathStr;
+          if (typeof path[0] === "number") {
+            jsonpathStr = `$[${path[0]}]`;
+            path.shift();
+          }
+          if (path.length !== 0) {
+            jsonpathStr = jsonpathStr + window.jsonpath.stringify(path).slice(1);
+          }
+          const res = JSONPath.JSONPath(jsonpathStr, jsonData);
+          if (res && res.length > 0 && dataType(res[0]) === "error" && res[0].isLosslessNumber) {
+            if (res[0].value.length > 16 | (/\.0{1,}$/).test(res[0])) {
+              const value = myJsonStringify(res[0]);
+              vm.bigintNode[onNodeName] = value;
+            }
+          }
+          return true;
+        }
+
+        // 监控该事件，修改显示的bigint数据
+        // editorObj.editor.options.onExpand = function ({ path, isExpand, recursive }) {
+        //   console.log("onExpand");
+        //   if (path && path.length !== 0) {
+        //     const nodeName = `${editorObj.editor.container.id}▶` + path.join("▶");
+        //     if (vm.bigintNode[nodeName]) {
+        //       $(`${nodeName} .jsoneditor-value`).text(vm.bigintNode[nodeName]);
+        //     }
+        //   }
+        // }
+
+        // tree模式增加菜单
+        editorObj.editor.options.onCreateMenu = function (items, node) {
+          // console.log("onCreateMenu", items, node);
+          if (items.length > 5) { // 大于5个，就是有子节点的
+            const funcInfo = {
+              className: "jsoneditor-expandSubAll",
+              text: "展开全部",
+              click: function () {
+                editorObj.editor.expand({ path: node.path, isExpand: true, recursive: true });
+              },
+              title: "展开全部子节点"
+            }
+            items.push(funcInfo);
+          }
+          return items;
+        }
+        // tree模式下，监听事件
+        editorObj.editor.options.onEvent = function ({ field, path, value }, event) {
+          // 用utools打开浏览器，预览URL
+          if (event.type === "click" && event.pointerType === "mouse" && event.ctrlKey && event.defaultPrevented && event.returnValue === false && utools) {
+            utools.shellOpenExternal(value);
+          } else if (event.type === "keydown" && event.key === "Enter" && event.ctrlKey && event.returnValue === false && utools) {
+            utools.shellOpenExternal(value);
+          }
+          
+          // 预览（时间戳、图片URL）
+          if (event.type === "mouseover") {
+            const targetEl = event.target.closest('.jsoneditor-value') || event.target;
+            // 清空原生提示
+            targetEl.title = '';
+            if (vm.isImageUrl(value)) {
+              vm.showImagePreview(targetEl, value);
+            } else if (vm.isTimestamp(value)) {
+              vm.showTimestampPreview(targetEl, value);
+            }
+          } else if (event.type === "mouseout") {
+            vm.hideImagePreview();
+            vm.hideTimestampPreview();
+          }
+        }
+
+      },
+      initDrag() {
+        // 垂直拖拽（调整左右宽度）
+        const verticalDrag = document.querySelector('.drag-vertical');
+        verticalDrag.addEventListener('mousedown', initVerticalDrag);
+
+        // 水平拖拽（调整上下高度）
+        document.querySelectorAll('.drag-horizontal').forEach(drag => {
+          drag.addEventListener('mousedown', initHorizontalDrag);
+        });
+
+        function initVerticalDrag(e) {
+          e.preventDefault();
+          const container = document.querySelector('.el-main');
+          const leftSection = document.querySelector('#leftSection');
+          const startX = e.clientX;
+          const startWidth = leftSection.offsetWidth;
+
+          function doDrag(e) {
+            const dx = e.clientX - startX;
+            const newWidth = Math.max(100, startWidth + dx); // 最小宽度100px
+            leftSection.style.width = `${newWidth}px`;
+          }
+
+          function stopDrag() {
+            document.removeEventListener('mousemove', doDrag);
+            document.removeEventListener('mouseup', stopDrag);
+          }
+
+          document.addEventListener('mousemove', doDrag);
+          document.addEventListener('mouseup', stopDrag);
+        }
+
+        function initHorizontalDrag(e) {
+          e.preventDefault();
+          const drag = e.target;
+          const parent = drag.parentElement;
+          const isLeft = parent.classList.contains('#leftSection');
+          let topElement, bottomElement;
+
+          if (isLeft) {
+            topElement = parent.querySelector('#leftSection');
+            bottomElement = parent.querySelector('#leftSection');
+          } else {
+            topElement = parent.querySelector('#jsonEditorRightBox');
+            bottomElement = parent.querySelector('#aceEditorBox');
+          }
+
+          const startY = e.clientY;
+          const startHeight = topElement.offsetHeight;
+          const parentHeight = parent.offsetHeight;
+
+          function doDrag(e) {
+            const dy = e.clientY - startY;
+            const newHeight = Math.max(100, startHeight + dy); // 最小高度100px
+            const bottomHeight = parentHeight - newHeight - 3; // 3是分割条高度
+            
+            // 使用 flex 基础值来设置高度
+            topElement.style.flex = `0 0 ${newHeight}px`;
+            bottomElement.style.flex = `0 0 ${Math.max(100, bottomHeight)}px`;
+          }
+
+          function stopDrag() {
+            document.removeEventListener('mousemove', doDrag);
+            document.removeEventListener('mouseup', stopDrag);
+            // // 重新渲染一下，避免出现UI问题
+            if (vm.jsonEditorLeft.aceEditor) {
+              vm.jsonEditorLeft.aceEditor.resize();
+            }
+            if (vm.jsonEditorRight.aceEditor) {
+              vm.jsonEditorRight.aceEditor.resize();
+            }
+            // aceEditor的问题，需要重新渲染一下，不然UI会有问题
+            if (vm.aceEditor) {
+              vm.aceEditor.resize();
+            }
+          }
+          document.addEventListener('mousemove', doDrag);
+          document.addEventListener('mouseup', stopDrag);
+        }
+      },
+
+      // 根据字段key排序
+      sortKeysByLodash(data, key, order = "asc") {
+        let res;
+        const cmp = (a, b) => {
+          const va = a[key], vb = b[key];
+          if (va < vb) return order === "asc" ? -1 : 1;
+          if (va > vb) return order === "asc" ? 1 : -1;
+          return 0;
+        };
+        if (dataType(data) === "array") {
+          res = [...data].sort(cmp);
+        } else if (dataType(data) === "object") {
+          res = [data].sort(cmp);
+        }
+        if (res && res.length > 0) {
+          return res[0];
+        }
+      },
+      // 切换为code模式
+      setModeCode(event) {
+        if ($(event.currentTarget).parents("#rightSection").length >= 1) {
+          this.jsonEditorRight.setMode("code");
+          const jsonRightStr = this.jsonEditorRight.getText();
+          this.jsonEditorRight.updateText(jsonRightStr);
+          this.jsonRightClassNameMap = {};
+          this.jsonRightClassNameMapStr = "";
+          this.__addEditorWatchEvent("jsonEditorRight");
+
+        } else {
+          this.jsonEditorLeft.setMode("code");
+          const jsontData = LosslessJSON.parse(this.jsonEditorLeft.getText());
+          aceEditorInsertData(this.jsonEditorLeft.aceEditor, jsontData);
+          this.__addEditorWatchEvent("jsonEditorLeft");
+        }
+
+      },
+      // 切换为tree模式
+      setModeTree(event) {
+        // BigInt 转 string，避免 tree 模式序列化失败
+        const convertBigIntToString = (obj) => {
+          if (obj === null || obj === undefined) return obj;
+          if (typeof obj === 'bigint') return obj.toString();
+          if (Array.isArray(obj)) return obj.map(convertBigIntToString);
+          if (typeof obj === 'object') {
+            const result = {};
+            for (const key in obj) {
+              result[key] = convertBigIntToString(obj[key]);
+            }
+            return result;
+          }
+          return obj;
+        };
+
+        if ($(event.currentTarget).parents("#rightSection").length >= 1) {
+          try {
+            const jsonData = this.jsonEditorRight.get();
+            const safeData = convertBigIntToString(jsonData);
+            this.jsonEditorRight.set(safeData);
+            this.jsonEditorRight.setMode("tree");
+            this.jsonEditorRightMode = "tree";
+          } catch (e) {
+            console.error('Tree mode error:', e);
+            this.$message.warning('切换到 tree 模式失败，请检查数据格式');
+          }
+        } else {
+          try {
+            const jsonData = this.jsonEditorLeft.get();
+            const safeData = convertBigIntToString(jsonData);
+            this.jsonEditorLeft.set(safeData);
+            this.jsonEditorLeft.setMode("tree");
+            this.jsonEditorLeftMode = "tree";
+          } catch (e) {
+            console.error('Tree mode error:', e);
+            this.$message.warning('切换到 tree 模式失败，请检查数据格式');
+          }
+        }
+      },
+      // JSON转义
+      toJson(event) {
+        if ($(event.currentTarget).parents("#leftSection").length >= 1) {
+          let jsonStr = myJsonStringify(LosslessJSON.parse(this.jsonEditorLeft.getText()), null, 0);
+          if (jsonStr) {
+            this.jsonEditorLeft.setText(myJsonStringify(jsonStr));
+          }
+        } else {
+          let jsonStr = myJsonStringify(LosslessJSON.parse(this.jsonEditorRight.getText()), null, 0);
+          if (jsonStr) {
+            this.jsonEditorRight.setText(myJsonStringify(jsonStr));
+          }
+        }
+      },
+      // JSON反转义
+      toObject(event) {
+        if ($(event.currentTarget).parents("#leftSection").length >= 1) {
+          let jsonData = LosslessJSON.parse(this.jsonEditorLeft.getText());
+          if (jsonData && dataType(jsonData) === "string") {
+            this.jsonEditorLeft.setText(myJsonStringify(LosslessJSON.parse(jsonData), null, 2));
+          } else {
+            this.jsonEditorLeft.setText(myJsonStringify(jsonData, null, 2));
+          }
+        } else {
+          let jsonRightData = LosslessJSON.parse(this.jsonEditorRight.getText());
+          if (jsonRightData && dataType(jsonRightData) === "string") {
+            this.jsonEditorRight.setText(myJsonStringify(LosslessJSON.parse(jsonRightData), null, 2));
+          } else {
+            this.jsonEditorRight.setText(myJsonStringify(jsonRightData, null, 2));
+          }
+        }
+      },
+      // 把json 2 jsonSchema
+      toJsonSchema() {
+        this.opName = "toJsonSchema";
+        this.isBoxHidden.leftSection = false;
+        this.isBoxHidden.transSortBox = true;
+        this.isBoxHidden.jsonEditorRightBox = false;
+        this.isBoxHidden.aceEditorBox = true;
+        this.jsonEditorRight.setMode("code");
+        try {
+          // 更改数据，使 watch 对 checkbox 的增加开始进行
+          this.jsonRightClassNameMap = {};
+          const jsonRightStr = myJsonStringify(getJsonSchemaData(editorGet(this.jsonEditorLeft), this.schemaOption), null, 2);
+          this.jsonEditorRight.updateText(jsonRightStr);
+          // 需要重新渲染 checkbox
+          this.addJsonEditorRightTreeCheckBox();
+        } catch (error) {
+          this.jsonEditorRight.setText(error.message);
+          throw error;
+        }
+      },
+      //jsonSchema验证
+      schema_validate() {
+        this.opName = "schemaValidate";
+        this.isBoxHidden.leftSection = false;
+        this.isBoxHidden.transSortBox = true;
+        this.isBoxHidden.jsonEditorRightBox = false;
+        this.isBoxHidden.aceEditorBox = false;
+        let results = [];
+        try {
+          this.jsonEditorLeft.setSchema(this.jsonEditorRight.get());
+          if (this.jsonEditorLeft.validateSchema.errors && this.jsonEditorLeft.validateSchema.errors.length > 0) {
+            results = this.jsonEditorLeft.validateSchema.errors;
+          }
+        } catch (error) {  // 忽略 schema 错误
+          this.aceEditor.setValue(error.message);
+          return;
+        }
+        let result_str = "";
+        if (results.length > 0) {
+          results.forEach(element => {
+            let instancePath = "$" + element["dataPath"]
+            result_str += results.indexOf(element) + 1 + "." + element["keyword"] + ": " + instancePath + " -- " + element["message"] + "\n";
+          });
+        } else {
+          result_str = "schema validate pass (*^▽^*)";
+        }
+        this.aceEditor.setValue(result_str)
+      },
+      // 把json生成jsonSchema
+      updateSchema() {
+        this.opName = "updateSchema";
+        try {
+          // 更改数据，使 watch 对 checkbox 的增加开始进行
+          this.jsonRightClassNameMap = {};
+          const oldJsonData = editorGet(this.jsonEditorLeft);
+          const oldJsonRightData = editorGet(this.jsonEditorRight);
+          const newSchemaData = updateJsonSchema(oldJsonData, oldJsonRightData, this.schemaOptionUpdate, this.jsonRightTreeSelectedArray);
+          // aceEditorInsertData(this.jsonEditorRight.aceEditor, newSchemaData);
+          this.jsonEditorRight.setText(myJsonStringify(newSchemaData, null, 2));
+          // 需要重新渲染 checkbox
+          this.addJsonEditorRightTreeCheckBox()
+        } catch (error) {
+          // this.aceEditor.setValue(error.message);
+          throw error;
+        }
+      },
+      // 打开 jsonSchema 的学习网页
+      openSchemaLearn() {
+        window.open("https://www.learnjsonschema.com/");
+        utools.shellOpenExternal("https://www.learnjsonschema.com/")
+      },
+      // tree模式下的搜索
+      treeSearch(editorName) {
+        let res;
+        if (editorName === "jsonEditorLeft") {
+          res = this.jsonEditorLeft.search(this.jsonLeftTreeSearchStr);
+        } else {
+          res = this.jsonEditorRight.search(this.jsonRightTreeSearchStr);
+        }
+        if (res && res.length > 0) {
+          res.forEach(el => {
+            el.node.expandPathToNode();
+          });
+        }
+      },
+      //根据jsonpath、jmespath、jq获取数据
+      async getJsonByQuery(op) {
+        this.opName = "getJsonByQuery";
+        this.isBoxHidden.leftSection = false;
+        this.isBoxHidden.jsonEditorRightBox = false;
+        this.jsonEditorRight.setMode("code");
+        if (this.jsonQueryStrHistorys.indexOf(this.jsonQueryStr) == -1) {
+          this.jsonQueryStrHistorys.push(this.jsonQueryStr);
+          this.jsonQueryStrList.unshift({ "value": this.jsonQueryStr });
+        }
+        try {
+          let jsonData;
+          if (this.transJsonEditorName && this.transJsonEditorName === "JSON右" || this.jsonEditorActive === "右") {
+            // jq 模式需要用普通 JSON.parse，避免 LosslessNumber 对象问题
+            if (this.jsonQueryMode === "jq") {
+              jsonData = JSON.parse(this.jsonEditorRight.getText());
+            } else {
+              jsonData = LosslessJSON.parse(this.jsonEditorRight.getText(), myLosslessJSONReviver);
+            }
+          } else {
+            // jq 模式需要用普通 JSON.parse，避免 LosslessNumber 对象问题
+            if (this.jsonQueryMode === "jq") {
+              jsonData = JSON.parse(this.jsonEditorLeft.getText());
+            } else {
+              jsonData = LosslessJSON.parse(this.jsonEditorLeft.getText(), myLosslessJSONReviver);
+            }
+          }
+          let resJsonData;
+          if (this.jsonQueryMode === "jsonpath") {
+            let jpResult = JSONPath.JSONPath(this.jsonQueryStr, jsonData);
+            // jsonpath 返回匹配结果的数组，如果只有一个结果且是数组/对象，直接使用
+            if (Array.isArray(jpResult) && jpResult.length === 1) {
+              resJsonData = jpResult[0];
+            } else {
+              resJsonData = jpResult;
+            }
+          } else if (this.jsonQueryMode === "jmespath") {
+            if (this.transJsonEditorName && this.transJsonEditorName === "JSON右") {
+              jsonData = LosslessJSON.parse(this.jsonEditorRight.getText(), myLosslessJSONReviver);
+            } else {
+              jsonData = LosslessJSON.parse(this.jsonEditorLeft.getText(), myLosslessJSONReviver);
+            }
+            resJsonData = vm.jsonEditorLeft.options.executeQuery(jsonData, this.jsonQueryStr)
+          } else if (this.jsonQueryMode === "jq") {
+            // 检查 jqWasm 是否可用
+            if (!window.jqWasm) {
+              throw new Error('jq 模块未加载，请检查 preload.js 是否正确引入 jq-index.js');
+            }
+            const jqResult = await window.jqWasm.json(jsonData, this.jsonQueryStr);
+            resJsonData = jqResult;
+          }
+
+          // 判断结果类型：JSON（对象/数组）展示在JSON面板，文本展示在编辑器
+          // 如果是数组且只有一个原始值元素，直接显示该值
+          let finalResult = resJsonData;
+          if (Array.isArray(resJsonData) && resJsonData.length === 1) {
+            const firstItem = resJsonData[0];
+            if (firstItem === null || typeof firstItem !== 'object') {
+              finalResult = firstItem;
+            }
+          }
+          const isJsonLike = finalResult !== null && finalResult !== undefined
+            && typeof finalResult === 'object';
+          const outputText = isJsonLike
+            ? myJsonStringify(finalResult, null, 2)
+            : (finalResult === null ? 'null' : String(finalResult));
+
+          if (isJsonLike) {
+            // JSON 结果 → JSON面板
+            this.isBoxHidden.aceEditorBox = true;
+            if (this.transJsonEditorName && this.transJsonEditorName === "JSON右" || this.jsonEditorActive === "右") {
+              if (op === "update") {
+                this.jsonEditorRight.updateText(outputText);
+              } else {
+                this.jsonEditorLeft.updateText(outputText);
+              }
+            } else {
+              if (op === "update") {
+                this.jsonEditorLeft.updateText(outputText);
+              } else {
+                this.jsonEditorRight.updateText(outputText);
+              }
+            }
+          } else {
+            // 文本结果 → 编辑器面板
+            this.isBoxHidden.aceEditorBox = false;
+            this.aceEditor.setValue(outputText);
+          }
+        } catch (error) {
+          this.isBoxHidden.aceEditorBox = false;
+          this.isBoxHidden.jsonEditorRightBox = true;
+          // 提供更详细的错误信息
+          let errorDetails = '[查询错误] ' + error.message;
+          if (this.jsonQueryMode === "jq" && error.message.includes("syntax error")) {
+            errorDetails += '\n\n💡 提示：请确认 JSON 编辑器中的数据格式是否正确';
+            errorDetails += '\n如果 JSON 根节点是数组 [...]，请使用 .[] 或 .[0] 语法';
+            errorDetails += '\n如果 JSON 根节点是对象 {...}，才能直接使用 .items 语法';
+          }
+          this.aceEditor.setValue(errorDetails);
+        }
+      },
+      // 根据jsonpath替换数据
+      replaceJsonByJsonpath(op) {
+        this.opName = "replaceJsonByJsonpath";
+        this.isBoxHidden.leftSection = false;
+        this.isBoxHidden.transSortBox = true;
+        this.isBoxHidden.jsonEditorRightBox = false;
+
+        if (this.isBoxHidden.aceEditorBox === true) {
+          this.isBoxHidden.aceEditorBox = false;
+          this.aceEditor.setValue(
+            "根据顶部的jsonpath来替换json的内容，请输入直观的json数据:\n\t" +
+            "注意：如果替换的json数据为空，则会删除该节点\n\t" +
+            "注意：如果替换的json数据为字符串，则会将该节点替换为字符串\n\t" +
+            "注意：如果替换的json数据为数字，则会将该节点替换为数字\n\t" +
+            "注意：如果替换的json数据为布尔值，则会将该节点替换为布尔值\n\t" +
+            "注意：如果替换的json数据为null，则会将该节点替换为null\n\t" +
+            "注意：如果替换的json数据为数组，则会将该节点替换为数组\n\t" +
+            "注意：如果替换的json数据为对象，则会将该节点替换为对象");
+          return;
+        }
+        let originReplaceData;
+        let replaceJsonData = this.aceEditor.getValue();
+
+        // 识别editor
+        let cuurentEditor;
+        let targetEditor;
+        if (this.jsonEditorActive === "左") {
+          cuurentEditor = this.jsonEditorLeft;
+          targetEditor = this.jsonEditorRight;
+        } else if (this.jsonEditorActive === "右") {
+          cuurentEditor = this.jsonEditorLeft;
+          targetEditor = this.jsonEditorRight;
+        }
+        if (replaceJsonData !== "") {
+          try {
+            originReplaceData = LosslessJSON.parse(this.aceEditor.getValue());
+            replaceJsonData = myJsonParse(this.aceEditor.getValue());  // 先尝试解析，防止输入非法入侵内容
+            if (dataType(replaceJsonData) === "string") {
+              replaceJsonData = `"${replaceJsonData}"`;
+            }
+          } catch (error) {
+            if (replaceJsonData !== "") {
+              this.$message.error(`请输入正确的json数据格式: ${error}`);
+              return;
+            }
+          }
+        }
+
+        const replaceJsonDataType = dataType(replaceJsonData);
+        // 0. 计算需要增加的行数
+        let replaceDataLineCount = 1;
+        if (replaceJsonDataType === "array" || replaceJsonDataType === "object") {
+          const replaceJsonDataLineCount = myJsonStringify(replaceJsonData, null, 2).split("\n").length;
+          if (replaceJsonDataLineCount > 1) {
+            replaceDataLineCount = replaceJsonDataLineCount;
+          }
+        }
+
+        // 1.获取当前jsonpath搜索结果的全部行对应的全部jsonpath
+        const oldJsonData = LosslessJSON.parse(cuurentEditor.getText());
+        cuurentEditor.updateText(myJsonStringify(oldJsonData, null, 2));
+        let currentJsonPathMap;
+        let currentJsonPathLineDict;
+        if (this.jsonEditorActive === "左") {
+          [this.jsonpathLeftMap, this.jsonEditorLeftJsonpathLineDict] = buildPathMap(oldJsonData);
+          currentJsonPathMap = this.jsonpathLeftMap;
+          currentJsonPathLineDict = this.jsonEditorLeftJsonpathLineDict;
+        } else if (this.jsonEditorActive === "右") {
+          [this.jsonpathRightMap, this.jsonEditorRightJsonpathLineDict] = buildPathMap(oldJsonData);
+          currentJsonPathMap = this.jsonpathRightMap;
+          currentJsonPathLineDict = this.jsonEditorRightJsonpathLineDict;
+        }
+        let jsonpathLines = [];
+        jsonpath.nodes(cuurentEditor.get(), this.jsonQueryStr).forEach(node => {
+          const jsonpathStr = window.jsonpath.stringify(node.path).replaceAll("[", ".").replaceAll("]", "");
+          jsonpathLines.push(currentJsonPathLineDict[jsonpathStr][0]);
+        });
+
+        // 2.行号排序，从上往下替换，多轮替换了后，好知道后面需要替换的行
+        // 3.计算真正的行号
+        let targetJsonpathLines = [];
+        const jsonpathLinesSort = jsonpathLines.sort((a, b) => a - b);
+        for (let i = 0; i < jsonpathLinesSort.length; i++) {
+          const line = jsonpathLinesSort[i];
+
+          const targetJsonpath = currentJsonPathMap.get(line)
+          const oldOneData = JSONPath.JSONPath(targetJsonpath, oldJsonData)[0];
+          const oldOneDataType = dataType(oldOneData);
+          let oldOneDataLineCount = 1;
+          if (oldOneDataType === "array" || oldOneDataType === "object") {
+            oldOneDataLineCount = myJsonStringify(oldOneData, null, 2).split("\n").length;
+          }
+
+          const subCount = replaceDataLineCount - oldOneDataLineCount;
+          targetJsonpathLines.push(line + (subCount * (i)));
+        }
+
+        // 4.再根据jsonpath替换全部的行
+        let newJsonData = LosslessJSON.parse(cuurentEditor.aceEditor.getValue());
+        let [jsonpathMap, jsonpathLineDict] = buildPathMap(newJsonData);
+        targetJsonpathLines.forEach((line, index) => {
+          // 3.1 根据替换数据类型，确定后面要增加的行数
+          const reallRepalceJsonpath = jsonpathMap.get(line);
+          let evalJsonpath = reallRepalceJsonpath.substring(1);
+          const evalJsonDataType = dataType(JSONPath.JSONPath(reallRepalceJsonpath, newJsonData)[0]);
+          // if (dataType(newJsonData) === "array") {
+          //   evalJsonpath = evalJsonpath.substring(1);
+          // }
+          // 使用安全函数替代 eval()
+          if (replaceJsonData === "") {
+            safeDelete(newJsonData, evalJsonpath);
+          } else {
+            safeSet(newJsonData, evalJsonpath, originReplaceData);
+          }
+          [jsonpathMap, jsonpathLineDict] = buildPathMap(newJsonData);
+        })
+        if (op === "update") {
+          cuurentEditor.updateText(myJsonStringify(newJsonData, null, 2));
+        } else {
+          targetEditor.updateText(myJsonStringify(newJsonData, null, 2));
+        }
+      },
+      // 打开 jsonpath 的学习网页
+      openJsonpathLearn() {
+        window.open("https://www.npmjs.com/package/jsonpath-plus");
+        utools.shellOpenExternal("https://www.npmjs.com/package/jsonpath-plus")
+      },
+      // 打开 jq 的学习网页
+      openJqLearn() {
+        window.open("https://jqlang.org/manual/");
+        utools.shellOpenExternal("https://jqlang.org/manual/")
+      },
+      // 判断是否为图片URL
+      isImageUrl(value) {
+        if (typeof value !== 'string') return false;
+        // 匹配 http(s)://...图片后缀 的URL
+        const imagePattern = /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?.*)?$/i;
+        return imagePattern.test(value);
+      },
+      // 显示图片预览
+      showImagePreview(targetEl, value) {
+        const tooltip = document.getElementById('imagePreviewTooltip');
+        if (!tooltip) return;
+        
+        const img = tooltip.querySelector('img');
+        const loading = tooltip.querySelector('.preview-loading');
+        
+        // 显示加载中
+        loading.style.display = 'block';
+        img.style.display = 'none';
+        img.src = value;
+        
+        // 图片加载完成后显示
+        img.onload = function() {
+          loading.style.display = 'none';
+          img.style.display = 'block';
+          // 限制最大宽高
+          const maxWidth = 300;
+          const maxHeight = 200;
+          let width = img.naturalWidth;
+          let height = img.naturalHeight;
+          if (width > maxWidth) {
+            height = height * (maxWidth / width);
+            width = maxWidth;
+          }
+          if (height > maxHeight) {
+            width = width * (maxHeight / height);
+            height = maxHeight;
+          }
+          img.style.width = width + 'px';
+          img.style.height = height + 'px';
+        };
+        
+        img.onerror = function() {
+          loading.textContent = '图片加载失败';
+        };
+        
+        const rect = targetEl.getBoundingClientRect();
+        tooltip.style.left = rect.left + 'px';
+        tooltip.style.top = (rect.bottom + 5) + 'px';
+        tooltip.style.display = 'block';
+      },
+      // 隐藏图片预览
+      hideImagePreview() {
+        const tooltip = document.getElementById('imagePreviewTooltip');
+        if (tooltip) {
+          tooltip.style.display = 'none';
+        }
+      },
+      // 判断是否为时间戳（毫秒或秒）
+      isTimestamp(value) {
+        if (typeof value !== 'number' && typeof value !== 'string') return false;
+        const num = Number(value);
+        if (isNaN(num)) return false;
+        
+        // 毫秒时间戳：13位，范围 1970-2100年
+        // 秒时间戳：10位，范围 1970-2100年
+        const now = Date.now();
+        const msThreshold = 1000 * 60 * 60 * 24 * 365 * 50; // 50年
+        
+        // 毫秒时间戳
+        if (num > 1000000000000 && num < 10000000000000) {
+          return Math.abs(num - now) < msThreshold;
+        }
+        // 秒时间戳
+        if (num > 1000000000 && num < 10000000000) {
+          return Math.abs(num * 1000 - now) < msThreshold;
+        }
+        return false;
+      },
+      // 格式化时间戳为可读时间
+      formatTimestamp(value) {
+        const num = Number(value);
+        let ms = num;
+        
+        // 判断是秒还是毫秒
+        if (num < 10000000000) {
+          ms = num * 1000; // 秒转毫秒
+        }
+        
+        const date = new Date(ms);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hour = String(date.getHours()).padStart(2, '0');
+        const minute = String(date.getMinutes()).padStart(2, '0');
+        const second = String(date.getSeconds()).padStart(2, '0');
+        
+        return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
+      },
+      // 显示时间戳预览
+      showTimestampPreview(targetEl, value) {
+        const tooltip = document.getElementById('timestampPreviewTooltip');
+        if (!tooltip) return;
+        
+        const formattedTime = this.formatTimestamp(value);
+        tooltip.querySelector('.timestamp-value').textContent = formattedTime;
+        
+        const rect = targetEl.getBoundingClientRect();
+        tooltip.style.left = rect.left + 'px';
+        tooltip.style.top = (rect.bottom + 5) + 'px';
+        tooltip.style.display = 'block';
+      },
+      // 隐藏时间戳预览
+      hideTimestampPreview() {
+        const tooltip = document.getElementById('timestampPreviewTooltip');
+        if (tooltip) {
+          tooltip.style.display = 'none';
+        }
+      },
+      // 隐藏元素
+      hiddenBox() {
+        Object.keys(this.isBoxHidden).forEach(el => {
+          // 隐藏
+          if (this.isBoxHidden[el]) {
+            $("#" + el).attr({ style: "display: none;" })
+            this.isBoxHidden[el] = true;
+          }
+          if (!this.isBoxHidden[el]) {
+            $("#" + el).attr({ style: this.elStylesDisplay[el] })
+          }
+          // 如果右侧两个子级隐藏，就隐藏整个右侧并让左侧铺满
+          if (this.isBoxHidden.aceEditorBox && this.isBoxHidden.jsonEditorRightBox) {
+            $("#rightSection").attr({ style: "display: none;" })
+            if (!this.isBoxHidden['leftSection']) {
+              $("#leftSection").attr({ style: "width: 100%" })
+            }
+          }
+          // 如果AceEditor隐藏，jsonRight不隐藏，铺满
+          if (this.isBoxHidden.aceEditorBox & !this.isBoxHidden.jsonEditorRightBox) {
+            $("#jsonEditorRightBox").attr({ style: "height: 100%;" })
+          }
+          // 如果jsonRight隐藏，AceEditor不隐藏，铺满
+          if (!this.isBoxHidden.aceEditorBox & this.isBoxHidden.jsonEditorRightBox) {
+            $("#aceEditorBox").attr({ style: "height: 100%;" })
+          }
+          // 如果排序和转换隐藏，就把 jsonEidor 铺满
+          if (this.isBoxHidden.transSortBox) {
+            $("#jsonEditorLeftBox").attr({ style: "height: 100%" })
+          }
+          if (!this.isBoxHidden.transSortBox) {
+            $("#jsonEditorLeftBox").attr({ style: "height: 75%" })
+          }
+        });
+        // 重新渲染一下，避免出现UI问题
+        // tree模式下，aceEditor不存在
+        if (this.jsonEditorLeft.aceEditor) {
+          this.jsonEditorLeft.aceEditor.resize();
+        }
+        if (this.jsonEditorRight.aceEditor) {
+          this.jsonEditorRight.aceEditor.resize();
+        }
+        this.aceEditor.resize();
+      },
+      // 重置 schemaOption
+      resetSchemOption() {
+        this.schemaOption = {
+          any: {
+            type: true,
+            enum: false,
+            const: false
+          },
+          string: {
+            minLength: false,
+            maxLength: false
+          },
+          number: {
+            minimum: false,
+            maximum: false
+          },
+          object: {
+            properties: true,
+            required: true,
+            minProperties: false,
+            maxProperties: false
+          },
+          array: {
+            items: true,
+            minItems: false,
+            maxItems: false
+          }
+        }
+      },
+      // 收缩JSON
+      foldAll(event) {
+        if ($(event.currentTarget).parents("#leftSection").length >= 1) {
+          if (this.jsonEditorLeft.getMode() === "code") {
+            this.jsonEditorLeft.aceEditor.session.foldAll();
+          } else if (this.jsonEditorLeft.getMode() === "tree") {
+            this.jsonEditorLeft.collapseAll();
+          }
+        } else {
+          if (this.jsonEditorRight.getMode() === "code") {
+            this.jsonEditorRight.aceEditor.session.foldAll();
+          } else if (this.jsonEditorRight.getMode() === "tree") {
+            this.jsonEditorRight.collapseAll();
+          }
+        }
+      },
+      // 展开JSON
+      unfold(event) {
+        // this.opName = "unfold";
+        if ($(event.currentTarget).parents("#leftSection").length >= 1) {
+          if (this.jsonEditorLeft.getMode() === "code") {
+            this.jsonEditorLeft.aceEditor.session.unfold();
+          } else if (this.jsonEditorLeft.getMode() === "tree") {
+            this.jsonEditorLeft.expandAll();
+          }
+        } else {
+          if (this.jsonEditorRight.getMode() === "code") {
+            this.jsonEditorRight.aceEditor.session.unfold();
+          } else if (this.jsonEditorRight.getMode() === "tree") {
+            this.jsonEditorRight.expandAll();
+          }
+        }
+      },
+      __getTransJsonpaths(jsonpaths, removeList = true) {
+        // 1. 提前处理空映射情况
+        if (jsonpaths.length === 0) {
+          return [];
+        }
+        // 2. 使用 Set 替代数组进行去重（性能更好）
+        const transJsonpathsSet = new Set();
+        // 3. 预编译正则表达式（避免每次循环重复创建）
+        const replacePattern = /@\[\d+\]?/g;
+        const splitPattern = /\[\d+\]?/g;
+        // 4. 优化循环
+        for (const [lineNum, jsonpath] of jsonpaths) {
+          // 5. 提前跳过不需要的路径
+          if (jsonpath === 0 || removeList && !jsonpath.includes("[")) {
+            continue;
+          }
+          // 6. 优化字符串操作 - 减少中间变量
+          let transJsonpath = jsonpath;
+          // 7. 优化替换操作 - 使用链式操作减少中间字符串创建
+          transJsonpath = transJsonpath.replace("$.", "").replace("$", "@");
+          // 8. 优化列表处理逻辑
+          if (removeList) {
+            // 使用预编译的正则表达式
+            transJsonpath = transJsonpath.replace(replacePattern, "");
+            // 优化 split 操作 - 只取第一个部分
+            // transJsonpath = transJsonpath.split(splitPattern)[0];
+            if (transJsonpath[0] === ".") {
+              transJsonpath = transJsonpath.substring(1);
+            }
+          }
+          // 9. 使用 Set 自动去重
+          if (transJsonpath && transJsonpath !== "") {
+            transJsonpathsSet.add(transJsonpath);
+          }
+        }
+        // 10. 转换为数组返回
+        return Array.from(transJsonpathsSet);
+      },
+      // 获取真实有效的 jmespath 查询选项
+      __getRealJmesQueryOptions(deletepath = true) {
+        const queryOptions = JSON.parse(JSON.stringify(this.queryOptions));
+        // 固定删除 path
+        if (deletepath && queryOptions.path) {
+          delete queryOptions.path;
+        }
+        // 把没有数据的选项删除
+        if (queryOptions.filter.field.length === 0) {
+          delete queryOptions.filter;
+        }
+        if (queryOptions.sort.field.length === 0) {
+          delete queryOptions.sort;
+        }
+        if (queryOptions.projection.fields.length === 0) {
+          delete queryOptions.projection;
+        }
+        return queryOptions;
+      },
+      // 更新排序和转换的路径
+      async __updateTransJsonpaths(jsonData, queryOptions) {
+        if (Object.keys(queryOptions).length <= 0) {
+          return;
+        }
+        // 先查看 options 的 key 的顺序，依次更新jsonpaths
+        const optionsKeys = Object.keys(queryOptions);
+        for (let index = 0; index < optionsKeys.length; index++) {
+          const optionKey = optionsKeys[index];
+          let transJsonpaths;
+          let jmepsRes;
+          if (Object.keys(queryOptions).length === 1 || queryOptions.path) {
+            jmepsRes = jsonData;
+          } else {
+            jmepsRes = this.jsonEditorLeft.options.executeQuery(jsonData, this.queryOptions[optionKey]);
+          }
+          // 再更新路径
+          // 空结果就不更新了
+          if (jmepsRes && jmepsRes.length > 0) {
+            const [jsonpathMap, jsonpathLineDict] = buildPathMap(jmepsRes);
+            // this.transPaths = await this.__getTransJsonpaths(jsonpathMap, false);
+            transJsonpaths = await this.__getTransJsonpaths(jsonpathMap, true);
+            if (dataType(jmepsRes) !== "array") {
+              transJsonpaths = [];
+            }
+            if (optionKey === "path") {
+              this.transFilterPaths = transJsonpaths;
+              this.transSortPaths = transJsonpaths;
+              this.transProjectionPaths = transJsonpaths;
+            } else if (optionKey === "filter") {
+              this.transSortPaths = transJsonpaths;
+              this.transProjectionPaths = transJsonpaths;
+            } else if (optionKey === "sort") {
+              this.transFilterPaths = transJsonpaths;
+              this.transProjectionPaths = transJsonpaths;
+            } else if (optionKey === "projection") {
+              this.transFilterPaths = transJsonpaths;
+              this.transSortPaths = transJsonpaths;
+            }
+          }
+        }
+      },
+      // 打开筛选或排序
+      async __openTransSortJsonBox(event) {
+        // this.opName = "transJson";
+        if (event.currentTarget.innerText === "筛选") {
+          this.jsonQueryMode = "jmespath";
+          this.transOrSort = 'trans';
+          const realQueryOptions = this.__getRealJmesQueryOptions(false);
+          // 有可能是切换左右JSON，就重置一下基础路径
+          this.queryOptions.path.field = "";
+          if ($(event.currentTarget).parents("#leftSection").length >= 1) {
+            this.transJsonEditorName = "JSON左";
+            this.jsonEditorActive = "左";
+            this.transPaths = await this.__getTransJsonpaths(this.jsonpathLeftMap, false);
+            await this.__updateTransJsonpaths(this.jsonEditorLeft.get(), realQueryOptions);
+          } else if ($(event.currentTarget).parents("#rightSection").length >= 1) {
+            this.transJsonEditorName = "JSON右";
+            this.jsonEditorActive = "右";
+            this.transPaths = await this.__getTransJsonpaths(this.jsonpathRightMap, false);
+            await this.__updateTransJsonpaths(this.jsonEditorRight.get(), realQueryOptions);
+          }
+        } else if (event.currentTarget.innerText === "排序") {
+          this.transOrSort = 'sort';
+          this.sortPaths = ["all"];
+          let jsonData;
+          if ($(event.currentTarget).parents("#leftSection").length >= 1) {
+            this.transJsonEditorName = "JSON左";
+            this.jsonEditorActive = "左";
+            jsonData = this.jsonEditorLeft.get();
+            for (const [lineNum, jsonpath] of this.jsonpathLeftMap) {
+              // 使用安全函数替代 eval()
+              const pathArray = JSONPath.JSONPath.toPathArray(jsonpath).slice(1);
+              const pathStr = pathArray.map(p => `[${typeof p === 'number' ? p : `"${p}"`}]`).join('');
+              const targetData = safeGet(jsonData, pathStr);
+              if (dataType(targetData) === "object" && !this.sortPaths.includes(jsonpath)) {
+                this.sortPaths.push(jsonpath);
+              }
+            }
+          } else if ($(event.currentTarget).parents("#rightSection").length >= 1) {
+            this.transJsonEditorName = "JSON右";
+            this.jsonEditorActive = "右";
+            jsonData = this.jsonEditorRight.get();
+            for (const [lineNum, jsonpath] of this.jsonpathRightMap) {
+              // 使用安全函数替代 eval()
+              const pathArray = JSONPath.JSONPath.toPathArray(jsonpath).slice(1);
+              const pathStr = pathArray.map(p => `[${typeof p === 'number' ? p : `"${p}"`}]`).join('');
+              const targetData = safeGet(jsonData, pathStr);
+              if (dataType(targetData) === "object" && !this.sortPaths.includes(jsonpath)) {
+                this.sortPaths.push(jsonpath);
+              }
+            }
+          }
+        }
+        this.isBoxHidden.leftSection = false;
+        this.isBoxHidden.transSortBox = false;
+        this.isBoxHidden.jsonEditorRightBox = false;
+        // this.isBoxHidden.aceEditorBox = false;
+      },
+      // 排序和转换
+      transJson() {
+        let queryStrs = [];
+        let queryOptions = this.__getRealJmesQueryOptions(false);
+        // 如果有 path 选项，就要添加进去
+        if (queryOptions.path && queryOptions.path.field.length > 0) {
+          queryStrs.push(queryOptions.path.field);
+        }
+        // 生成查询语句
+        let jmespath = "";
+        if (this.transJsonEditorName && this.transJsonEditorName === "JSON左") {
+          const queryOptionsNew = this.__getRealJmesQueryOptions();
+          // 无条件的过滤会有bug，需要手动改一下
+          jmespath = this.jsonEditorLeft.options.createQuery(this.jsonEditorLeft.get(), queryOptionsNew);
+        } else if (this.transJsonEditorName && this.transJsonEditorName === "JSON右") {
+          const queryOptionsNew = this.__getRealJmesQueryOptions();
+          // 无条件的过滤会有bug，需要手动改一下
+          jmespath = this.jsonEditorRight.options.createQuery(this.jsonEditorRight.get(), queryOptionsNew);
+        }
+        // 把无条件的过滤清除
+        jmespath = jmespath.replaceAll(/(?<=\[\? .*?) (|==|!=|<|<=|>|>=) `""`(?=\])/g, "");
+        // 把这种语法错误修正：[*].[0].linePrice
+        jmespath = jmespath.replaceAll(/\.(\[\d+\]?)/g, "$1");
+        if (jmespath.length > 0 && jmespath !== "@") {
+          queryStrs.push(jmespath);
+        }
+        // this.aceEditor.setValue(queryStrs);
+        // 组合查询语句
+        if (Object.keys(queryOptions) === 0) {
+          this.jsonQueryStr = "@";
+          // 如果只有一个path，就不用管 filter、sort、projection
+        } else if (Object.keys(queryOptions).length === 1 && queryOptions.path) {
+          if (queryOptions.path.field.length === 0) {
+            this.jsonQueryStr = "@";
+          } else {
+            this.jsonQueryStr = queryOptions.path.field;
+          }
+        } else {
+          this.jsonQueryStr = queryStrs.join(" | ");
+        }
+        this.getJsonByQuery();
+      },
+      // 按key对json排序
+      sortJsonByKey() {
+        if (this.sortOptions.field === ""){
+          return;
+        }
+        let jsonData;
+        let jsonEditor;
+        if (this.transJsonEditorName && this.transJsonEditorName === "JSON左") {
+          jsonEditor = this.jsonEditorLeft;
+          jsonData = LosslessJSON.parse(this.jsonEditorLeft.aceEditor.getValue());
+        } else if (this.transJsonEditorName && this.transJsonEditorName === "JSON右") {
+          jsonEditor = this.jsonEditorRight;
+          jsonData = LosslessJSON.parse(this.jsonEditorRight.aceEditor.getValue());
+        }
+        if (this.sortOptions.field !== "all") {
+          jsonData = this.__sortJson(jsonData, this.sortOptions.field, this.sortOptions.direction);
+        } else if (this.sortOptions.field === "all") {
+          this.sortPaths.forEach(sortPath => {
+            if (sortPath !== "all") {
+              jsonData = this.__sortJson(jsonData, sortPath, this.sortOptions.direction);
+            }
+          })
+        }
+        jsonEditor.updateText(myJsonStringify(jsonData, null, 2));
+      },
+      __sortJson(jsonData, jsonPath, direction) {
+        let newJsonData = LosslessJSON.parse(LosslessJSON.stringify(jsonData));
+        
+        // 构建路径
+        const pathArray = JSONPath.JSONPath.toPathArray(jsonPath).slice(1);
+        const pathStr = pathArray.map(p => `[${typeof p === 'number' ? p : `"${p}"`}]`).join('');
+        
+        // 使用安全函数获取数据
+        const oldData = safeGet(jsonData, pathStr);
+        
+        if (direction === "asc") {  // 升序
+          const sortedObjAsc = Object.keys(oldData)
+            .sort()
+            .reduce((acc, key) => {
+              acc[key] = oldData[key];
+              return acc;
+            }, {});
+          // 使用安全函数设置数据
+          safeSet(newJsonData, pathStr, sortedObjAsc);
+        } else if (direction === "desc") {  // 倒序
+          const keys = Object.keys(oldData).sort((a, b) => b.localeCompare(a));
+          let sortedObjDesc = {};
+          keys.forEach(key => {
+            sortedObjDesc[key] = oldData[key];
+          });
+          // 使用安全函数设置数据
+          safeSet(newJsonData, pathStr, sortedObjDesc);
+        }
+        return newJsonData;
+      },
+      // 重置 schemaOptionUpdate
+      resetSchemOptionUpdate() {
+        this.schemaOptionUpdate = {
+          any: {
+            type: true,
+            enum: false,
+            const: false
+          },
+          string: {
+            minLength: false,
+            maxLength: false
+          },
+          number: {
+            minimum: false,
+            maximum: false
+          },
+          object: {
+            properties: true,
+            required: true,
+            minProperties: false,
+            maxProperties: false
+          },
+          array: {
+            items: true,
+            minItems: false,
+            maxItems: false
+          }
+        }
+      },
+      // json 2 yaml
+      jToY() {
+        this.opName = "jToy";
+        this.isBoxHidden.leftSection = false;
+        this.isBoxHidden.transSortBox = true;
+        this.isBoxHidden.jsonEditorRightBox = true;
+        this.isBoxHidden.aceEditorBox = false;
+        try {
+          const jsonStr = this.jsonEditorLeft.getText();
+          const jsonData = LosslessJSON.parse(jsonStr, myJsonReviverLong);
+          // console.log(jsonData);
+          const yamlStr = cleanLongXML(window.yaml.dump(jsonData));
+          this.aceLanguage = "ace/mode/yaml";
+          this.aceEditor.setValue(yamlStr);
+        } catch (error) {
+          this.aceEditor.setValue(error.message);
+        }
+      },
+      // yaml 2 json
+      yToJ() {
+        this.opName = "yToJ";
+        this.isBoxHidden.leftSection = false;
+        this.isBoxHidden.transSortBox = true;
+        this.isBoxHidden.jsonEditorRightBox = true;
+        this.isBoxHidden.aceEditorBox = false;
+        try {
+          this.aceLanguage = "ace/mode/yaml";
+          const jsonData = window.yaml.load(this.aceEditor.getValue());
+          aceEditorInsertData(this.jsonEditorLeft.aceEditor, jsonData);
+        } catch (error) {
+          this.jsonEditorLeft.aceEditor.setValue(error.message);
+        }
+      },
+      // json 2 xml
+      jToX() {
+        this.opName = "jToX";
+        this.isBoxHidden.leftSection = false;
+        this.isBoxHidden.transSortBox = true;
+        this.isBoxHidden.jsonEditorRightBox = true;
+        this.isBoxHidden.aceEditorBox = false;
+        try {
+          let jsonData = LosslessJSON.parse(this.jsonEditorLeft.getText(), myJsonReviverLong);
+          if (Object.keys(jsonData).indexOf("root") === -1) {
+            jsonData = { "root": jsonData };
+          }
+          const xmlStr = cleanLongXML(json2xml(jsonData, { compact: true, ignoreComment: true, spaces: 4, header: true }));
+          this.aceLanguage = "ace/mode/xml";
+          this.aceEditor.setValue(xmlStr.replaceAll("&lt;/Long&gt;", "").replaceAll("&lt;Long&gt;", ""));
+        } catch (error) {
+          this.aceEditor.setValue(error.message);
+        }
+      },
+      // xml 2 json
+      xToJ() {
+        this.opName = "xToJ";
+        this.isBoxHidden.leftSection = false;
+        this.isBoxHidden.transSortBox = true;
+        this.isBoxHidden.jsonEditorRightBox = true;
+        this.isBoxHidden.aceEditorBox = false;
+        try {
+          this.aceLanguage = "ace/mode/xml";
+          const jsonStr = xml2json(this.aceEditor.getValue(), {
+            compact: true, spaces: 4, textNodeName: '', ignoreAttributes: true
+          });
+          let jsonData = myJsonParse(jsonStr);
+          if (Object.keys(jsonData).indexOf("root") !== -1) {
+            jsonData = jsonData["root"];
+          }
+          aceEditorInsertData(this.jsonEditorLeft.aceEditor, jsonData);
+        } catch (error) {
+          this.aceEditor.setValue(error.message);
+        }
+      },
+
+      // json 2 properties
+      jToP() {
+        this.opName = "jTop";
+        this.isBoxHidden.leftSection = false;
+        this.isBoxHidden.transSortBox = true;
+        this.isBoxHidden.jsonEditorRightBox = true;
+        this.isBoxHidden.aceEditorBox = false;
+        try {
+          const propArray = flattenJsonDataOrArray(LosslessJSON.parse(this.jsonEditorLeft.getText(), myJsonReviverLong));
+          const propStrs = [];
+          propArray.forEach(oneProp => {
+            Object.keys(oneProp).forEach(onePropKey => {
+              propStrs.push(cleanLongXML(`${onePropKey}=${oneProp[onePropKey]}`));
+            })
+          })
+          this.aceLanguage = "ace/mode/properties";
+          this.aceEditor.setValue(propStrs.join("\n"));
+        } catch (error) {
+          this.aceEditor.setValue(error.message);
+          throw error;
+        }
+      },
+      // properties 2 json
+      pToJ() {
+        this.opName = "pToJ";
+        this.isBoxHidden.leftSection = false;
+        this.isBoxHidden.transSortBox = true;
+        this.isBoxHidden.jsonEditorRightBox = true;
+        this.isBoxHidden.aceEditorBox = false;
+        try {
+          this.aceLanguage = "ace/mode/properties";
+          let propStr = this.aceEditor.getValue();
+          // 1.用 \n 把 str 拆分成 array
+          let propsList = propStr.split("\n");
+          const jsonData = propertiesToJson(propsList);
+          aceEditorInsertData(this.jsonEditorLeft.aceEditor, jsonData);
+        } catch (error) {
+          this.jsonEditorLeft.set(error.message);
+          throw error;
+        }
+      },
+      // json 2 http query
+      jToH() {
+        this.opName = "jToH";
+        this.isBoxHidden.leftSection = false;
+        this.isBoxHidden.transSortBox = true;
+        this.isBoxHidden.jsonEditorRightBox = true;
+        this.isBoxHidden.aceEditorBox = false;
+        try {
+          // let jsonData = this.jsonEditorLeft.get();
+          let jsonData = editorGet(this.jsonEditorLeft);
+          const propArray = flattenJsonDataOrArray(jsonData);
+          let queryStr = "";
+          propArray.forEach(oneProp => {
+            Object.keys(oneProp).forEach(key => {
+              let value = encodeURIComponent(oneProp[key]);
+              queryStr += `${key}=${value}&`;
+            })
+          })
+          queryStr = queryStr.slice(0, -1);
+          this.aceEditor.setValue(queryStr);
+        } catch (error) {
+          this.aceEditor.setValue(error.message);
+          throw error;
+        }
+      },
+      // http query 2 json
+      hToJ() {
+        this.opName = "hToJ";
+        this.isBoxHidden.leftSection = false;
+        this.isBoxHidden.transSortBox = true;
+        this.isBoxHidden.jsonEditorRightBox = true;
+        this.isBoxHidden.aceEditorBox = false;
+        try {
+          let queryStr = this.aceEditor.getValue();
+          let pairArray = queryStr.split("&");
+          const jsonData = decodeURIComponent(myJsonStringify(propertiesToJson(pairArray), null, 2));
+          // const jsonData = this.propertiesToJson(pairArray);
+          this.jsonEditorLeft.setText(jsonData);
+        } catch (error) {
+          this.jsonEditorLeft.set(error.message);
+          throw error;
+        }
+      },
+      // 切换aceEditor的mode
+      switchAceEditorMode() {
+        this.aceEditor.session.setMode(this.aceLanguage);
+      },
+      // 切换为树形态时，jsonEditorRight 增加复选框
+      addJsonEditorRightTreeCheckBox(editorElId) {
+        if ((this.opName === "toJsonSchema" || this.opName === "updateSchema" || this.opName === "schemaValidate") && this.jsonEditorRightMode === "tree") {
+          // 如果不是 tree 模式 and 没有节点，就退出，不增加 tb
+          if (this.jsonEditorRight.getMode() !== "tree" || Object.keys(window.vm.jsonRightClassNameMap).length === 0) {
+            return
+          }
+          // 0.先把 tb 全部加上
+          const elsAll = $('#jsonEditorRightBox tr td:first-child:not([class=jsoneditor-tree])')
+          const elsAllArray = jQuery.makeArray(elsAll)
+          elsAllArray.forEach(el => {
+            if ($(el).parent().children().length === 3) {
+              $(el).before('<tb></tb>');
+            }
+          })
+          Object.keys(this.jsonRightClassNameMap).forEach(pathStr => {
+            if (!pathStr) {
+              return;
+            }
+            let els = $('.' + pathStr).parents("tr").children();
+            if (els.length === 4) {
+              // 1.加上 tb 包含有 checkbox_path
+              $(els[0]).attr("checkbox_path", pathStr);
+              // 2.再用 tb 加入 checkbox
+              const checkboxEl = this.$el.querySelector('tb[checkbox_path=' + pathStr + "]");
+              if (this.jsonRightClassNameMap[pathStr]) {
+                // 增加元素
+                // 如果上一次勾选了的，这次更新也要默认勾选
+                if (!$(checkboxEl).attr("checked") && window.vm.jsonRightTreeSelectedArray.indexOf(pathStr) > -1) {
+                  $(checkboxEl).html('<input name="" type="checkbox" value="' + pathStr + '" class="editorTreeTb" checked>');
+                } else {
+                  $(checkboxEl).html('<input name="" type="checkbox" value="' + pathStr + '" class="editorTreeTb">');
+                }
+                // 绑定元素的 change 事件, 把勾选的保存起来；取消勾选的，删除已保存的数据
+                $("tb[checkbox_path=" + pathStr + "]" + " input").on("change", function (e) {
+                  if (e.target.checked && window.vm.jsonRightTreeSelectedArray.indexOf(pathStr) === -1) {
+                    window.vm.jsonRightTreeSelectedArray.push(e.target.value);
+                  } else {
+                    window.vm.jsonRightTreeSelectedArray.splice(window.vm.jsonRightTreeSelectedArray.indexOf(e.target.value), 1);
+                  }
+                });
+              }
+            }
+          })
+        }
+      },
+      // 左右对换
+      leftRightSwap() {
+        const leftText = this.jsonEditorLeft.getText();
+        this.jsonEditorLeft.setText(this.jsonEditorRight.getText());
+        this.jsonEditorRight.setText(leftText);
+        this.jsonEditorLeft.aceEditor.setValue(this.jsonEditorLeft.getText());
+        this.jsonEditorRight.aceEditor.setValue(this.jsonEditorRight.getText());
+      },
+      // 防抖自动对比
+      __debouncedAutoDiff() {
+        clearTimeout(this._autoDiffTimer);
+        this._autoDiffTimer = setTimeout(() => {
+          this.jsonDiff();
+        }, 500);
+      },
+      // 对比JSON文本，得出对应的差异，并且渲染 jsonEditorLeft 的颜色
+      jsonDiff() {
+        this.__clearDiffClass();
+        if (this.jsonEditorLeft.get() === ""
+          || this.jsonEditorRight.get() === ""
+          || JSON.stringify(this.jsonEditorLeft.get()) === JSON.stringify(this.jsonEditorRight.get())
+        ) {
+          this.jsonDiffCount = 0;
+          return;
+        }
+        this.jsonEditorLeftDiffData = {};
+        this.jsonEditorLeftDiffLineData = {};
+        this.jsonEditorRightDiffData = {};
+        this.jsonEditorRightDiffLineData = {};
+        this.jsonFormat(this.jsonEditorLeft);
+        this.jsonFormat(this.jsonEditorRight);
+        const jsonEditorLeftData = LosslessJSON.parse(this.jsonEditorLeft.getText());
+        const jsonEditorRightData = LosslessJSON.parse(this.jsonEditorRight.getText());
+        // [this.jsonpathLeftMap, this.jsonEditorLeftJsonpathLineDict] = buildPathMap(this.jsonEditorLeft.get());
+        // [this.jsonpathRightMap, this.jsonEditorRightJsonpathLineDict] = buildPathMap(this.jsonEditorRight.get());
+        this.isBoxHidden.leftSection = false;
+        this.isBoxHidden.transSortBox = true;
+        this.isBoxHidden.jsonEditorRightBox = false;
+        this.isBoxHidden.aceEditorBox = true;
+        // 0.先把以前的数据重置了
+        let jsonEditorLeftDiffData = {};
+        let jsonEditorLeftDiffLineData = {};
+        let jsonEditorRightDiffData = {};
+        let jsonEditorRightDiffLineData = {};
+        this.jsonDiffPatchList = [];
+        this.jsonDiffLastIndex = 0;
+        // 1.获取两边的JSON数据，并且对比
+        const jsonDiffPatchList = jsonpatch.compare(jsonEditorLeftData, jsonEditorRightData);
+        this.jsonDiffPatchList = jsonDiffPatchList;
+        const jsonpathLineDictLeftKeys = Object.keys(this.jsonEditorLeftJsonpathLineDict);
+        const jsonpathLineDictRightKeys = Object.keys(this.jsonEditorRightJsonpathLineDict);
+        // 2.遍历差异数据，拼接 html 字符串
+        // 2.遍历差异数据，拼接 html 字符串
+        jsonDiffPatchList.forEach(oneDiffPatch => {
+          let jsonEditorLeftOneDiffData = {
+            jsonpath: undefined,
+            jsonData: undefined,
+            jsonDataType: undefined,
+            otherSideDataType: undefined,
+            diffOp: undefined,
+            diffResClassName: undefined,
+            classNameScope: undefined,
+            classNameLineNum: [],
+            keyInnerHtml: undefined,
+            valueDiffDatas: [],
+            keyDiffDatas: []
+          }
+          let jsonEditorRightOneDiffData = {
+            jsonpath: undefined,
+            jsonData: undefined,
+            jsonDataType: undefined,
+            otherSideDataType: undefined,
+            diffOp: undefined,
+            diffResClassName: undefined,
+            classNameScope: undefined,
+            classNameLineNum: [],
+            keyInnerHtml: undefined,
+            valueDiffDatas: [],
+            keyDiffDatas: []
+          }
+          // 1.先把路径转换一下
+          let diffPath = "$" + oneDiffPatch.path.replaceAll("/", ".");
+          this.jsonDiffPatchList.push({ op: oneDiffPatch.op, path: diffPath });
+          const diffPathCurrentJsonEditorLeftIndex = jsonpathLineDictLeftKeys.indexOf(diffPath);
+          const diffPathCurrentJsonEditorRightIndex = jsonpathLineDictRightKeys.indexOf(diffPath);
+          // 2.再根据这个路径去拿取差异数据
+          const dmp = new diff_match_patch();
+          let jsonEditorLeftValue;
+          let jsonEditorLeftValueType;
+          let jsonEditorRightValue;
+          let jsonEditorRightValueType;
+          if (oneDiffPatch.op === "remove") {
+            jsonEditorLeftOneDiffData.diffOp = "remove";
+            jsonEditorLeftValue = JSONPath.JSONPath(diffPath, jsonEditorLeftData)[0];
+            jsonEditorLeftValueType = dataType(jsonEditorLeftValue);
+            jsonEditorLeftOneDiffData.classNameScope = "line";
+            if (jsonEditorLeftValueType === "array" || jsonEditorLeftValueType === "object") {
+              jsonEditorLeftOneDiffData.classNameScope = "all";
+            }
+            let preJsonpath;
+            let preJsonvalue;
+            let nextJsonpath;
+            let nextJsonvalue;
+            let currentJsonValue;
+            if (diffPathCurrentJsonEditorLeftIndex > 0) {
+              currentJsonValue = myJsonStringify(JSONPath.JSONPath(diffPath, jsonEditorLeftData)[0]);
+              preJsonpath = jsonpathLineDictLeftKeys[diffPathCurrentJsonEditorLeftIndex - 1];
+              preJsonvalue = myJsonStringify(JSONPath.JSONPath(preJsonpath, jsonEditorLeftData)[0]);
+              if (diffPathCurrentJsonEditorLeftIndex < jsonpathLineDictLeftKeys.length - 1) {
+                nextJsonpath = jsonpathLineDictLeftKeys[diffPathCurrentJsonEditorLeftIndex + 1];
+                nextJsonvalue = myJsonStringify(JSONPath.JSONPath(nextJsonpath, jsonEditorLeftData)[0]);
+              }
+            }
+            let preJsonRightPath;
+            let preJsonRightValue;
+            let nextJsonRightPath;
+            let nextJsonRightValue;
+            let currentJsonRightValue;
+            if (diffPathCurrentJsonEditorRightIndex > 0) {
+              currentJsonRightValue = myJsonStringify(JSONPath.JSONPath(diffPath, jsonEditorRightData)[0]);
+              preJsonRightPath = jsonpathLineDictRightKeys[diffPathCurrentJsonEditorRightIndex - 1];
+              preJsonRightValue = myJsonStringify(JSONPath.JSONPath(preJsonRightPath, jsonEditorRightData)[0]);
+              if (diffPathCurrentJsonEditorRightIndex < jsonpathLineDictRightKeys.length - 1) {
+                nextJsonRightPath = jsonpathLineDictRightKeys[diffPathCurrentJsonEditorRightIndex + 1];
+                nextJsonRightValue = myJsonStringify(JSONPath.JSONPath(nextJsonRightPath, jsonEditorRightData)[0])
+              }
+            } else {
+              const preJsonRightPath2 = jsonpathLineDictRightKeys[diffPathCurrentJsonEditorLeftIndex - 1];
+              if (preJsonRightPath2) {
+                preJsonRightPath = preJsonRightPath2;
+                preJsonRightValue = myJsonStringify(JSONPath.JSONPath(preJsonRightPath2, jsonEditorRightData)[0]);
+              }
+              const nextJsonRightPath2 = jsonpathLineDictRightKeys[diffPathCurrentJsonEditorLeftIndex + 1];
+              if (nextJsonRightPath2) {
+                nextJsonRightPath = nextJsonRightPath2;
+                nextJsonRightValue = myJsonStringify(JSONPath.JSONPath(nextJsonRightPath2, jsonEditorRightData)[0]);
+              }
+              const currentJsonRightPath2 = jsonpathLineDictRightKeys[diffPathCurrentJsonEditorLeftIndex];
+              if (currentJsonRightPath2) {
+                currentJsonRightPath = currentJsonRightPath2;
+                currentJsonRightValue = myJsonStringify(JSONPath.JSONPath(currentJsonRightPath2, jsonEditorRightData)[0]);
+              }
+            }
+            // 如果上一个 或 下一个节点 是一样的，那么就是这个节点的key的名字不一样，来对比这个key的差异
+            if (preJsonpath || nextJsonpath) {
+              if (preJsonpath == preJsonRightPath || nextJsonpath == nextJsonRightPath
+                || nextJsonvalue == nextJsonRightValue || currentJsonValue == currentJsonRightValue) {
+                const jsonEditorRightJsonpath = jsonpathLineDictRightKeys[diffPathCurrentJsonEditorLeftIndex]
+                let jsonEditorLeftKey = "";
+                let jsonEditorRightKey = "";
+                if (jsonEditorRightJsonpath) {
+                  const diffPathJsonEditorRightKey = jsonEditorRightJsonpath.split(".").pop();
+                  const allDmpRes = dmp.diff_main(diffPath.split(".").pop(), diffPathJsonEditorRightKey);
+                  jsonEditorLeftOneDiffData.keyDiffDatas = allDmpRes;
+                  allDmpRes.forEach(oneDmpRes => {
+                    let oneDmpResValue = oneDmpRes[1];
+                    if (oneDmpRes[0] === 0) {  // 相同的内容
+                      jsonEditorLeftKey = `${jsonEditorLeftKey}${oneDmpResValue}`;
+                      jsonEditorRightKey = `${jsonEditorRightKey}${oneDmpResValue}`;
+                    } else if (oneDmpRes[0] === 1) {  // jsonEditorRight 多的内容
+                      jsonEditorRightKey = jsonEditorRightKey + `<span class=\"addDiffStr\" contenteditable=\"true\">${oneDmpResValue}</span>`;
+                    } else if (oneDmpRes[0] === -1) {  // jsonEditorLeft 多的内容
+                      jsonEditorLeftKey = jsonEditorLeftKey + `<span class=\"removeDiffStr\" contenteditable=\"true\">${oneDmpResValue}</span>`;
+                    }
+                  })
+                } else {
+                  jsonEditorLeftKey = diffPath.split(".").pop();
+                }
+                jsonEditorLeftOneDiffData.keyInnerHtml = `"${jsonEditorLeftKey}"`;
+                jsonEditorRightOneDiffData.keyInnerHtml = `"${jsonEditorRightKey}"`;
+              }
+            }
+          } else if (oneDiffPatch.op === "add") {
+            jsonEditorRightOneDiffData.diffOp = "add";
+            jsonEditorRightValue = JSONPath.JSONPath(diffPath, jsonEditorRightData)[0];
+            jsonEditorRightValueType = dataType(jsonEditorRightValue);
+            jsonEditorRightOneDiffData.classNameScope = "line";
+            if (jsonEditorRightValueType === "array" || jsonEditorRightValueType === "object") {
+              jsonEditorRightOneDiffData.classNameScope = "all";
+            }
+            let preJsonpath;
+            let preJsonvalue;
+            let nextJsonpath;
+            let nextJsonvalue;
+            let currentJsonValue;
+            if (diffPathCurrentJsonEditorLeftIndex > 0) {
+              currentJsonValue = myJsonStringify(JSONPath.JSONPath(diffPath, jsonEditorLeftData)[0]);
+              preJsonpath = jsonpathLineDictLeftKeys[diffPathCurrentJsonEditorLeftIndex - 1];
+              preJsonvalue = myJsonStringify(JSONPath.JSONPath(preJsonpath, jsonEditorLeftData)[0]);
+              if (diffPathCurrentJsonEditorLeftIndex < jsonpathLineDictLeftKeys.length - 1) {
+                nextJsonpath = jsonpathLineDictLeftKeys[diffPathCurrentJsonEditorLeftIndex + 1];
+                nextJsonvalue = myJsonStringify(JSONPath.JSONPath(nextJsonpath, jsonEditorLeftData)[0]);
+              }
+            } else {
+              const preJsonpath2 = jsonpathLineDictLeftKeys[diffPathCurrentJsonEditorRightIndex - 1];
+              if (preJsonpath2) {
+                preJsonpath = preJsonpath2;
+                preJsonvalue = myJsonStringify(JSONPath.JSONPath(preJsonpath2, jsonEditorLeftData)[0]);
+              }
+              const nextJsonpath2 = jsonpathLineDictLeftKeys[diffPathCurrentJsonEditorRightIndex + 1];
+              if (nextJsonpath2) {
+                nextJsonpath = nextJsonpath2;
+                nextJsonvalue = myJsonStringify(JSONPath.JSONPath(nextJsonpath2, jsonEditorLeftData)[0]);
+              }
+              const currentJsonpath2 = jsonpathLineDictLeftKeys[diffPathCurrentJsonEditorRightIndex];
+              if (currentJsonpath2) {
+                currentJsonpath = currentJsonpath2;
+                currentJsonValue = myJsonStringify(JSONPath.JSONPath(currentJsonpath2, jsonEditorLeftData)[0]);
+              }
+            }
+            let preJsonRightPath;
+            let preJsonRightValue;
+            let nextJsonRightPath;
+            let nextJsonRightValue;
+            let currentJsonRightValue;
+            if (diffPathCurrentJsonEditorRightIndex > 0) {
+              currentJsonRightValue = myJsonStringify(JSONPath.JSONPath(diffPath, jsonEditorRightData)[0]);
+              preJsonRightPath = jsonpathLineDictRightKeys[diffPathCurrentJsonEditorRightIndex - 1];
+              preJsonRightValue = myJsonStringify(JSONPath.JSONPath(preJsonRightPath, jsonEditorRightData)[0]);
+              if (diffPathCurrentJsonEditorRightIndex < jsonpathLineDictRightKeys.length - 1) {
+                nextJsonRightPath = jsonpathLineDictRightKeys[diffPathCurrentJsonEditorRightIndex + 1];
+                nextJsonRightValue = myJsonStringify(JSONPath.JSONPath(nextJsonRightPath, jsonEditorRightData)[0]);
+              }
+            }
+            // 如果上一个 或 下一个节点 是一样的，那么就是这个节点的key的名字不一样，来对比这个key的差异
+            if (preJsonRightPath || nextJsonRightPath) {
+              if (preJsonpath == preJsonRightPath || nextJsonpath == nextJsonRightPath
+                || nextJsonvalue == nextJsonRightValue || currentJsonValue == currentJsonRightValue) {
+                const jsonEditorJsonpath = jsonpathLineDictLeftKeys[diffPathCurrentJsonEditorRightIndex]
+                let jsonEditorLeftKey = "";
+                let jsonEditorRightKey = "";
+                if (jsonEditorJsonpath) {
+                  const diffPathJsonEditorKey = jsonEditorJsonpath.split(".").pop();
+                  const allDmpRes = dmp.diff_main(diffPathJsonEditorKey, diffPath.split(".").pop());
+                  jsonEditorRightOneDiffData.keyDiffDatas = allDmpRes;
+                  allDmpRes.forEach(oneDmpRes => {
+                    let oneDmpResValue = oneDmpRes[1];
+                    if (oneDmpRes[0] === 0) {  // 相同的内容
+                      jsonEditorLeftKey = `${jsonEditorLeftKey}${oneDmpResValue}`;
+                      jsonEditorRightKey = `${jsonEditorRightKey}${oneDmpResValue}`;
+                    } else if (oneDmpRes[0] === 1) {  // jsonEditorRight 多的内容
+                      jsonEditorRightKey = jsonEditorRightKey + `<span class=\"addDiffStr\" contenteditable=\"true\">${oneDmpResValue}</span>`;
+                    } else if (oneDmpRes[0] === -1) {  // jsonEditorLeft 多的内容
+                      jsonEditorLeftKey = jsonEditorLeftKey + `<span class=\"removeDiffStr\" contenteditable=\"true\">${oneDmpResValue}</span>`;
+                    }
+                  })
+                } else {
+                  jsonEditorRightKey = diffPath.split(".").pop();
+                }
+                jsonEditorLeftOneDiffData.keyInnerHtml = `"${jsonEditorLeftKey}"`;
+                jsonEditorRightOneDiffData.keyInnerHtml = `"${jsonEditorRightKey}"`;
+              }
+            }
+          } else {  // replace
+            jsonEditorLeftOneDiffData.diffOp = "replace";
+            jsonEditorRightOneDiffData.diffOp = "replace";
+            jsonEditorLeftOneDiffData.classNameScope = "value";
+            jsonEditorRightOneDiffData.classNameScope = "value";
+            jsonEditorLeftValue = JSONPath.JSONPath(diffPath, jsonEditorLeftData)[0];
+            jsonEditorLeftValueType = dataType(jsonEditorLeftValue);
+            jsonEditorRightValue = JSONPath.JSONPath(diffPath, jsonEditorRightData)[0];
+            jsonEditorRightValueType = dataType(jsonEditorRightValue);
+            // 如果类型不一样，就是左边remove，右边add
+            if (jsonEditorLeftValueType !== "array" && jsonEditorLeftValueType !== "object" && jsonEditorRightValueType !== "array" && jsonEditorRightValueType !== "object") {
+              const allDmpRes = dmp.diff_main(`${jsonEditorLeftValue}`, `${jsonEditorRightValue}`);
+              // 3.再把 {jsonpath : 差异数据}，存储起来
+              allDmpRes.forEach(oneDmpRes => {
+                let oneDmpResValue;
+                if (dataType(oneDmpRes[1]) === "string") {
+                  oneDmpResValue = myJsonStringify(oneDmpRes[1]).slice(1, -1);
+                } else {
+                  oneDmpResValue = oneDmpRes[1];
+                }
+                oneDmpResValue = oneDmpResValue.replaceAll("<", "&lt;");
+                if (oneDmpRes[0] === 0) {  // 相同的内容
+                  jsonEditorLeftOneDiffData.valueDiffDatas.push([0, oneDmpResValue]);
+                  jsonEditorRightOneDiffData.valueDiffDatas.push([0, oneDmpResValue]);
+                } else if (oneDmpRes[0] === 1) {  // jsonEditorRight 多的内容
+                  jsonEditorRightOneDiffData.valueDiffDatas.push([1, oneDmpResValue]);
+                } else if (oneDmpRes[0] === -1) {  // jsonEditorLeft 多的内容
+                  jsonEditorLeftOneDiffData.valueDiffDatas.push([-1, oneDmpResValue]);
+                }
+              })
+            } else {
+              jsonEditorLeftOneDiffData.classNameScope = "all";
+              jsonEditorRightOneDiffData.classNameScope = "all";
+            }
+          }
+          // 4.把差异数据存起来
+          // 4.1 左边
+          if (jsonEditorLeftValue !== undefined && jsonEditorLeftOneDiffData.diffOp) {
+            jsonEditorLeftOneDiffData.jsonpath = diffPath;
+            jsonEditorLeftOneDiffData.jsonData = jsonEditorLeftValue;
+            jsonEditorLeftOneDiffData.jsonDataType = jsonEditorLeftValueType;
+            jsonEditorLeftOneDiffData.otherSideDataType = jsonEditorRightValueType;
+            jsonEditorLeftOneDiffData.diffResClassName = jsonEditorLeftOneDiffData.diffOp + "DiffLine";
+            // 获取真正影响到的行数据
+            if (jsonEditorLeftOneDiffData.classNameScope === "all") {
+              for (const [jsonpath, lines] of Object.entries(this.jsonEditorLeftJsonpathLineDict)) {
+                lines.forEach((line, index) => {
+                  if (jsonpath.indexOf(diffPath) !== -1 && jsonEditorLeftOneDiffData.classNameLineNum.indexOf(line) == -1) {
+                    jsonEditorLeftOneDiffData.classNameLineNum.push(line);
+                    // 转为行数据
+                    if (jsonEditorLeftOneDiffData.jsonDataType | jsonEditorLeftOneDiffData.jsonpath === jsonpath) {
+                      jsonEditorLeftOneDiffData.jsonpath = jsonpath;
+                      this.jsonEditorLeftDiffLineData[line] = myJsonParse(myJsonStringify(jsonEditorLeftOneDiffData));
+                    } else {
+                      jsonEditorLeftOneDiffData.jsonpath = jsonpath;
+                      jsonEditorLeftOneDiffData.keyDiffDatas = [];
+                      let diffData2 = myJsonParse(myJsonStringify(jsonEditorLeftOneDiffData));
+                      diffData2.keyInnerHtml = `"${jsonpath.split(".").pop()}"`;
+                      this.jsonEditorLeftDiffLineData[line] = diffData2;
+                    }
+                  }
+                });
+              }
+            } else {
+              // 如果是 bigint 或 number, diffpath需要重新获取（取父级）
+              let readDiffPath = diffPath;
+              parentJsonpath = diffPath.split(".").slice(0, -1).join(".");
+              parentData = JSONPath.JSONPath(parentJsonpath, jsonEditorLeftData);
+              if (parentData && parentData[0].isLosslessNumber) {
+                parentKeysStr = JSON.stringify(Object.keys(parentData[0]));
+                if (diffPath.endsWith(".value") && parentKeysStr === '["isLosslessNumber","value"]') {
+                  readDiffPath = parentJsonpath;
+                  jsonEditorLeftOneDiffData.jsonData = parentData[0];
+                  jsonEditorLeftOneDiffData.jsonDataType = dataType(myJsonParse(jsonEditorLeftValue));
+                }
+              }
+              for (const [jsonpath, lines] of Object.entries(this.jsonEditorLeftJsonpathLineDict)) {
+                lines.forEach((line) => {
+                  if (readDiffPath === jsonpath && jsonEditorLeftOneDiffData.classNameLineNum.indexOf(line) == -1) {
+                    jsonEditorLeftOneDiffData.classNameLineNum.push(line);
+                    jsonEditorLeftOneDiffData.jsonpath = jsonpath;
+                    // 转为行数据
+                    this.jsonEditorLeftDiffLineData[line] = myJsonParse(myJsonStringify(jsonEditorLeftOneDiffData));
+                  }
+                });
+              }
+            }
+          }
+          // 4.2 右边
+          if (jsonEditorRightValue !== undefined && jsonEditorRightOneDiffData.diffOp) {
+            jsonEditorRightOneDiffData.jsonpath = diffPath;
+            jsonEditorRightOneDiffData.jsonData = jsonEditorRightValue;
+            jsonEditorRightOneDiffData.jsonDataType = jsonEditorRightValueType;
+            jsonEditorRightOneDiffData.otherSideDataType = jsonEditorLeftValueType;
+            jsonEditorRightOneDiffData.diffResClassName = jsonEditorRightOneDiffData.diffOp + "DiffLine";
+            if (jsonEditorRightOneDiffData.classNameScope === "all") {
+              for (const [jsonpath, lines] of Object.entries(this.jsonEditorRightJsonpathLineDict)) {
+                lines.forEach((line, index) => {
+                  if (jsonpath.indexOf(diffPath) !== -1 && jsonEditorRightOneDiffData.classNameLineNum.indexOf(line) == -1) {
+                    jsonEditorRightOneDiffData.classNameLineNum.push(line);
+                    if (jsonEditorRightOneDiffData.jsonDataType | jsonEditorRightOneDiffData.jsonpath === jsonpath) {
+                      jsonEditorRightOneDiffData.jsonpath = jsonpath;
+                      this.jsonEditorRightDiffLineData[line] = myJsonParse(myJsonStringify(jsonEditorRightOneDiffData));
+                    } else {
+                      jsonEditorRightOneDiffData.jsonpath = jsonpath;
+                      jsonEditorRightOneDiffData.keyDiffDatas = [];
+                      let diffData2 = myJsonParse(myJsonStringify(jsonEditorRightOneDiffData));
+                      diffData2.keyInnerHtml = `"${jsonpath.split(".").pop()}"`;
+                      this.jsonEditorRightDiffLineData[line] = diffData2;
+                    }
+                  }
+                });
+              }
+            } else {
+              // 如果是 bigint 或 number, diffpath需要重新获取
+              let readDiffPath = diffPath;
+              parentJsonpath = diffPath.split(".").slice(0, -1).join(".");
+              parentData = JSONPath.JSONPath(parentJsonpath, jsonEditorRightData);
+              if (parentData && parentData[0].isLosslessNumber) {
+                parentKeysStr = JSON.stringify(Object.keys(parentData[0]));
+                if (diffPath.endsWith(".value") && parentKeysStr === '["isLosslessNumber","value"]') {
+                  readDiffPath = parentJsonpath;
+                  jsonEditorRightOneDiffData.jsonData = parentData[0];
+                  jsonEditorRightOneDiffData.jsonDataType = dataType(myJsonParse(jsonEditorRightValue));
+                }
+              }
+              for (const [jsonpath, lines] of Object.entries(this.jsonEditorRightJsonpathLineDict)) {
+                lines.forEach((line) => {
+                  if (readDiffPath === jsonpath && jsonEditorRightOneDiffData.classNameLineNum.indexOf(line) == -1) {
+                    jsonEditorRightOneDiffData.classNameLineNum.push(line);
+                    jsonEditorRightOneDiffData.jsonpath = jsonpath;
+                    // 转为行数据
+                    this.jsonEditorRightDiffLineData[line] = myJsonParse(myJsonStringify(jsonEditorRightOneDiffData));
+                  }
+                });
+              }
+            }
+          }
+        });
+        this.opName = "jsonDiff";
+        this.isAsyncScrollView = true;
+        this.jsonDiffCount = jsonDiffPatchList.length;
+        this.diffRender();
+      },
+
+      // 文本差异，包裹替换
+      __replaceByWrapText(textList, diffList, wrapTextStart, wrapTextEnd) {
+        let copyDiffList = myJsonParse(myJsonStringify(diffList));
+        const newTextList = [];
+        let allText = textList.join('');
+        allText = allText.replaceAll("<", "&lt;");
+        let diffAllText = ``;
+        copyDiffList.forEach(diff => {
+          diffAllText = `${diffAllText}${diff[1]}`;
+        })
+        if (allText.length !== diffAllText.length) {  // 如果长度都不相同，就不用对比了，直接跳过
+          return newTextList;
+        }
+
+        // 把 text 每一行在字符串里面的 start end 位置记录下来
+        const textLineLengthList = [];
+        textList.forEach((text, index) => {
+          text = text.replaceAll("<", "&lt;");
+          if (index === 0) {
+            textLineLengthList.push(text.length);
+          } else {
+            textLineLengthList.push(textLineLengthList[index - 1] + text.length);
+          }
+        })
+
+        let needReplace = false;
+        copyDiffList.forEach(diff => {
+          if (diff[0] !== 0) {  // 不是相同，需要替换
+            needReplace = true;
+          }  // 相同
+        })
+        if (needReplace == false) {  // 如果没有需要替换的，就直接返回
+          return newTextList;
+        }
+
+        // // 开始拼接
+        let minus = 0;
+        let diffLineLengthCount = 0;
+        let copyDiffListIndex = 0;
+        textLineLengthList.forEach((textLineLength, index) => {
+          if (copyDiffListIndex > copyDiffList.length) {  // 如果copyDiffList已经用完，就退出循环
+            return;
+          }
+          let diffHtmlOne = ``;
+          for (let i; diffLineLengthCount < textLineLength; i++) {
+            const diffOp = copyDiffList[copyDiffListIndex][0];
+            let diffText = copyDiffList[copyDiffListIndex][1];
+            diffLineLengthCount = diffLineLengthCount + diffText.length;
+            minus = textLineLength - diffLineLengthCount;
+            if (textLineLength >= diffLineLengthCount) { // 如果text比diff长或者一样长，说明text这一行还没解决或者正好解决，diff直接套
+              if (diffOp === 0) {  // 相同
+                diffHtmlOne = `${diffHtmlOne}${diffText}`
+              } else {
+                diffHtmlOne = `${diffHtmlOne}${wrapTextStart}${diffText}${wrapTextEnd}`;
+              }
+              copyDiffListIndex++;
+              if (textLineLength === diffLineLengthCount) {
+                break;
+              }
+            } else { // 如果text比diff短，说明text这一行已经解决，text要取下一行，diff还有剩余，需要加到下一行
+              diffLineLengthCount = diffLineLengthCount - diffText.length;
+              diffText = diffText.slice(0, minus);  // 取出真正的差异
+              copyDiffList[copyDiffListIndex][1] = copyDiffList[copyDiffListIndex][1].slice(minus);  // 把裁剪过的diffText放回去
+              diffLineLengthCount = diffLineLengthCount + diffText.length;
+              if (diffOp === 0) {  // 相同
+                diffHtmlOne = `${diffHtmlOne}${diffText}`;
+              } else {
+                diffHtmlOne = `${diffHtmlOne}${wrapTextStart}${diffText}${wrapTextEnd}`;
+              }
+              break;
+            }
+          }
+          const characterWidht = vm.jsonEditorLeft.aceEditor.renderer.characterWidth;  // 获取1个字符宽度
+          diffHtmlOne = diffHtmlOne.replaceAll(
+            // 扩展匹配所有中文字符（包括生僻字）
+            // /([^\x00-\x7F])/g,
+            /([^\u0020-\u007E])/gu,
+            `<span class="ace_cjk" style="width:${(characterWidht * 2).toFixed(4)}px">$1</span>`
+          );
+          newTextList.push(diffHtmlOne);
+        })
+
+        return newTextList;
+      },
+
+      // 获取editor当前视图内的行
+      __getEditorLines(editor) {
+        const minRow = editor.aceEditor.renderer.getFirstVisibleRow();
+        const maxRow = editor.aceEditor.renderer.getLastVisibleRow();
+        // 行号索引的元素
+        const lineIndexEls = document.querySelectorAll(`.${editor.getName()} .ace_gutter-cell`);
+        let lineNumbers = [];
+        lineIndexEls.forEach((lineIndexEl, index) => {
+          lineInt = Number(lineIndexEl.innerText);
+          // 这个数可能不在显示范围内，所以要判断一下
+          if (lineInt >= minRow + 1 && lineInt <= maxRow + 1) {
+            lineNumbers.push(lineInt);   // 加上行号
+          }
+        });
+        return lineNumbers;
+      },
+
+      // 修改 tree 的class 为 diff 之后的数据
+      diffRender() {
+        if (this.opName === "jsonDiff") {
+          // 0. 先获取editor当前视图内的行
+
+          // 1.先渲染jsonEditorLeft的diff数据
+          const jsonEditorLeftLineNumbers = this.__getEditorLines(this.jsonEditorLeft);
+          // 1.1 获取组
+          const jsonGroupEls = document.querySelectorAll("#jsonEditorLeft .ace_line_group");
+          for (let i = 0; i < jsonGroupEls.length; i++) {
+            const groupEl = jsonGroupEls[i];
+            const lineNum = jsonEditorLeftLineNumbers[i];
+            if (Object.keys(this.jsonEditorLeftDiffLineData).indexOf(`${lineNum}`) !== -1) {
+              const lineData = this.jsonEditorLeftDiffLineData[`${lineNum}`];
+              const lineELs = $(groupEl).find(".ace_line");
+              // 1.2 先把行给渲染了
+              if (lineData.classNameScope !== "value") {
+                lineELs.addClass(lineData.diffResClassName);
+              }
+
+              // 1.3 key只有一个数据，把key渲染了
+              let keyEls = $(groupEl).find(".ace_variable");
+              if (keyEls.length > 0 && lineData.keyInnerHtml) {
+                $(keyEls[0]).html(lineData.keyInnerHtml);
+              }
+
+              if (lineData.classNameScope === "value") {
+                // 1.4 现在渲染value
+                // 1.4.1 获取value的元素
+                // null值需要特殊处理
+                if (lineData.jsonDataType === "null") {
+                  const originalHtml = $(groupEl).html();
+                  const newHtml = originalHtml.replace(": null", ": ");
+                  $(groupEl).html(newHtml);
+                  if ($(groupEl).find("#nullValue").length === 0) {
+                    $(groupEl).find(".ace_operator").before("<span id=\"nullValue\" class=\"replaceDiffLine\">null</span>");
+                  }
+                }
+
+                let valueEls = [];
+                let valueTexts = []
+
+                valueEls = $(groupEl).find("div > span:not(.ace_indent-guide):not(.ace_variable):not(.ace_operator)");
+
+                Array.from(valueEls).forEach((valueEl, index) => {
+                  let valueText = $(valueEl).text();
+                  // string 把首位的双引号去掉
+                  if (lineData.jsonDataType === "string" && index === 0 && valueText.startsWith("\"")) {
+                    valueText = valueText.substring(1);
+                  }
+                  if (lineData.jsonDataType === "string" && index === valueEls.length - 1 && valueText.endsWith("\"")) {
+                    valueText = valueText.substring(0, valueText.length - 1);
+                  }
+                  valueTexts.push(valueText);
+                  const valueElClass = $(valueEl).attr("class");
+                  if (valueElClass.indexOf("Diff") === -1) {
+                    $(valueEl).addClass(lineData.diffResClassName);
+                  }
+                });
+
+                // 再渲染value的差异
+                const newTextList = this.__replaceByWrapText(valueTexts, lineData.valueDiffDatas, "<span class=\"removeDiffStr\" contenteditable=\"true\">", "</span>");
+                if (newTextList.length > 0) {
+                  Array.from(valueEls).forEach((valueEl, index) => {
+                    if (index === 0 && index === valueEls.length - 1 && lineData.jsonDataType === "string") {
+                      $(valueEl).html(`"${newTextList[index]}"`);
+                    } else if (index === 0 && lineData.jsonDataType === "string") {
+                      $(valueEl).html(`"${newTextList[index]}`);
+                    } else if (index === valueEls.length - 1 && lineData.jsonDataType === "string") {
+                      $(valueEl).html(`${newTextList[index]}"`);
+                    } else {
+                      $(valueEl).html(`${newTextList[index]}`);
+                    }
+                  });
+                } else {
+                  if (lineData.jsonDataType === "string" && lineData.jsonDataType !== lineData.otherSideDataType) {
+                    $(valueEls[0]).html(`<span class="removeDiffStr" contenteditable="true">"</span>${lineData.jsonData}<span class="removeDiffStr" contenteditable="true">"</span>`);
+                  }
+                }
+              }
+            }
+          }
+
+          // 2.再渲染jsonEditorRight的diff数据
+          const jsonEditorRightLineNumbers = this.__getEditorLines(this.jsonEditorRight);
+          // 2.1 获取组
+          const jsonRightGroupEls = document.querySelectorAll("#jsonEditorRightBox .ace_line_group");
+          for (let i = 0; i < jsonRightGroupEls.length; i++) {
+            const groupEl = jsonRightGroupEls[i];
+            const lineNum = jsonEditorRightLineNumbers[i];
+            if (Object.keys(this.jsonEditorRightDiffLineData).indexOf(`${lineNum}`) !== -1) {
+              const lineData = this.jsonEditorRightDiffLineData[`${lineNum}`];
+              const lineELs = $(groupEl).find(".ace_line");
+              // 1.2 先把行给渲染了
+              if (lineData.classNameScope !== "value") {
+                lineELs.addClass(lineData.diffResClassName);
+              }
+
+              // 1.3 key只有一个数据，把key渲染了
+              let keyEls = $(groupEl).find(".ace_variable");
+              if (keyEls.length > 0 && lineData.keyInnerHtml) {
+                $(keyEls[0]).html(lineData.keyInnerHtml);
+              }
+
+              if (lineData.classNameScope === "value") {
+                // 1.4 现在渲染value
+                // 1.4.1 获取value的元素
+                // null值需要特殊处理
+                if (lineData.jsonDataType === "null") {
+                  const originalHtml = $(groupEl).html();
+                  const newHtml = originalHtml.replace(": null", ": ");
+                  $(groupEl).html(newHtml);
+                  if ($(groupEl).find("#nullValue").length === 0) {
+                    $(groupEl).find(".ace_operator").before("<span id=\"nullValue\" class=\"replaceDiffLine\">null</span>");
+                  }
+                }
+
+                let valueEls = [];
+                let valueTexts = []
+
+                valueEls = $(groupEl).find("div > span:not(.ace_indent-guide):not(.ace_variable):not(.ace_operator)");
+
+                Array.from(valueEls).forEach((valueEl, index) => {
+                  let valueText = $(valueEl).text();
+                  // string 把首位的双引号去掉
+                  if (lineData.jsonDataType === "string" && index === 0 && valueText.startsWith("\"")) {
+                    valueText = valueText.substring(1);
+                  }
+                  if (lineData.jsonDataType === "string" && index === valueEls.length - 1 && valueText.endsWith("\"")) {
+                    valueText = valueText.substring(0, valueText.length - 1);
+                  }
+                  valueTexts.push(valueText);
+                  const valueElClass = $(valueEl).attr("class");
+                  if (valueElClass.indexOf("Diff") === -1) {
+                    $(valueEl).addClass(lineData.diffResClassName);
+                  }
+                });
+
+                // 再渲染value的差异
+                const newTextList = this.__replaceByWrapText(valueTexts, lineData.valueDiffDatas, "<span class=\"addDiffStr\" contenteditable=\"true\">", "</span>");
+                if (newTextList.length > 0) {
+                  Array.from(valueEls).forEach((valueEl, index) => {
+                    if (index === 0 && index === valueEls.length - 1 && lineData.jsonDataType === "string") {
+                      $(valueEl).html(`"${newTextList[index]}"`);
+                    } else if (index === 0 && lineData.jsonDataType === "string") {
+                      $(valueEl).html(`"${newTextList[index]}`);
+                    } else if (index === valueEls.length - 1 && lineData.jsonDataType === "string") {
+                      $(valueEl).html(`${newTextList[index]}"`);
+                    } else {
+                      $(valueEl).html(`${newTextList[index]}`);
+                    }
+                  });
+                } else {
+                  if (lineData.jsonDataType === "string" && lineData.jsonDataType !== lineData.otherSideDataType) {
+                    $(valueEls[0]).html(`<span class="addDiffStr" contenteditable="true">"</span>${lineData.jsonData}<span class="addDiffStr" contenteditable="true">"</span>`);
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+
+      __clearDiffClass() {
+        const classNames = ["addDiffLine", "removeDiffLine", "replaceDiffLine", "addDiffStr", "removeDiffStr", "replaceDiffStr"];
+        classNames.forEach(className => {
+          const elements = document.getElementsByClassName(className);
+          Array.from(elements).forEach(element => {
+            element.classList.remove(className);
+          })
+        })
+        this.jsonDiffCount = undefined;
+        this.jsonEditorLeftDiffLineData = {};
+        this.jsonEditorRightDiffLineData = {};
+        this.jsonEditorLeftDiffData = {};
+        this.jsonEditorRightDiffData = {};
+        this.isAsyncScrollView = false;
+      },
+
+      // 同步滚动
+      __syncScroll(editor) {
+        // if (this.isAsyncScrollView && this.opName === "jsonDiff") {
+        if (this.isAsyncScrollView) {
+          // 1.获取当前行列表
+          const jsonLines = this.__getEditorLines(this.jsonEditorLeft);
+          const jsonRightLines = this.__getEditorLines(this.jsonEditorRight);
+          // 2.获取行对应的jsonpath
+          // 3.获取这个jsonpath对应另一个编辑的行
+          let targetline;
+          if (editor.getName() === "jsonEditorLeft") {
+            for (let i = 0; i < jsonLines.length; i++) {
+              const line = jsonLines[i];
+              const jsonpath = this.jsonpathLeftMap.get(line);
+              if (jsonpath && this.jsonEditorRightJsonpathLineDict[jsonpath.replaceAll("[", ".").replaceAll("]", "")]) {
+                const targetLines = this.jsonEditorRightJsonpathLineDict[jsonpath.replaceAll("[", ".").replaceAll("]", "")];
+                targetline = targetLines[0];
+                // 确定是开头的那一行还是结尾的那一行 == 哪行距离近，就是哪一行；除了目标在第一行的情况
+                if (targetLines.length > 1 && targetline > 1) {
+                  const subStart = jsonRightLines[0] - targetLines[0];
+                  const subEnd = jsonRightLines[0] - targetLines[1];
+                  if (Math.abs(subStart) >= Math.abs(subEnd)) {
+                    targetline = targetLines[1];
+                  }
+                }
+                break;
+              }
+            }
+            if (!targetline) {
+              return;
+            }
+            if (jsonRightLines[jsonRightLines.length - 1] < this.jsonEditorRight.aceEditor.session.getLength()
+              || jsonRightLines[0] > targetline) {
+              this.jsonEditorRight.aceEditor.scrollToLine(targetline - 1);
+            }
+          } else {
+            for (let i = 0; i < jsonRightLines.length; i++) {
+              const line = jsonRightLines[i];
+              const jsonpath = this.jsonpathRightMap.get(line);
+              if (jsonpath && this.jsonEditorLeftJsonpathLineDict[jsonpath.replaceAll("[", ".").replaceAll("]", "")]) {
+                const targetLines = this.jsonEditorLeftJsonpathLineDict[jsonpath.replaceAll("[", ".").replaceAll("]", "")];
+                targetline = targetLines[0];
+                // 确定是开头的那一行还是结尾的那一行 == 哪行距离近，就是哪一行；除了目标在第一行的情况
+                if (targetLines.length > 1 && targetline > 1) {
+                  const subStart = jsonLines[0] - targetLines[0];
+                  const subEnd = jsonLines[0] - targetLines[1];
+                  if (Math.abs(subStart) >= Math.abs(subEnd)) {
+                    targetline = targetLines[1];
+                  }
+                }
+                break;
+              }
+            }
+            if (!targetline) {
+              return;
+            }
+            if (jsonLines[jsonLines.length - 1] < this.jsonEditorLeft.aceEditor.session.getLength()
+              || jsonLines[0] > targetline) {
+              this.jsonEditorLeft.aceEditor.scrollToLine(targetline - 1);
+            }
+          }
+        }
+      },
+
+      // 页面滑动到上/下一个差异
+      switchDiff(upOrdown) {
+        if (this.jsonDiffPatchList.length > 0) {
+
+          const keys1 = Object.keys(this.jsonEditorLeftDiffLineData);
+          const keys2 = Object.keys(this.jsonEditorRightDiffLineData);
+          const allDiffLines = [...keys1, ...keys2].sort((a, b) => a - b);
+          const uniqueAllDiffLines = [...new Set(allDiffLines)];
+
+          let index;
+          if (upOrdown === "up") {
+            index = this.jsonDiffLastIndex - 1;
+            if (index <= 0) {
+              index = uniqueAllDiffLines.length - 1 + index;
+            }
+          } else {
+            index = this.jsonDiffLastIndex + 1;
+            if (index > uniqueAllDiffLines.length - 1) {
+              index = index - uniqueAllDiffLines.length - 1;
+            }
+          }
+          let lineNum = uniqueAllDiffLines[index] - 1;
+          if (!lineNum) {
+            lineNum = 0;
+          }
+          if (keys1.indexOf(lineNum) !== -1) {
+            this.jsonEditorLeft.aceEditor.scrollToLine(lineNum);
+            this.json
+          } else {
+            this.jsonEditorRight.aceEditor.scrollToLine(lineNum);
+          }
+          this.jsonDiffLastIndex = index;
+        }
+      },
+      // 把数据导出为文件
+      exportFile(editorName, fileExtensionName) {
+        this.opName = "exportFile";
+        let editorData;
+        if (editorName === 'left') {
+          editorData = this.jsonEditorLeft.aceEditor.getValue();
+        } else if (editorName === 'right') {
+          editorData = this.jsonEditorRight.aceEditor.getValue();
+        } else if (editorName === 'ace') {
+          editorData = this.aceEditor.getValue();
+        }
+        const time = new Date();
+        const timeInfo = (time.getFullYear() + '年' + (time.getMonth() + 1) + '月' + time.getDate() + '日' + time.getHours() + '-' + time.getMinutes() + '-' + time.getSeconds());
+        const exportFileName = "JsonTools导出" + editorName + "_" + timeInfo + "." + fileExtensionName
+        const filedir = utools.getPath('downloads');
+        const exportFilePath = window.path.join(filedir, exportFileName);
+
+        if (fileExtensionName !== "xlsx") {
+          // 创建一个可写流，写入到 output.txt 文件
+          const writeStream = window.fs.createWriteStream(exportFilePath, {
+            encoding: 'utf8',
+            // flags: 'a' // 如果想追加而不是覆盖，可以用 'a'（默认是 'w' 覆盖）
+          });
+          // 写入数据（可以多次调用 write()）
+          editorData.split('\n').forEach(line => {
+            writeStream.write(line + '\n');
+          });
+          // 写入完成后关闭流
+          writeStream.end();
+        } else {
+          let jsonData = JSON.parse(editorData);
+          if (jsonData) {
+            let headers = [];
+            let newJsonData = undefined;
+            let headerWs = undefined;
+            let ws = undefined;
+            if (dataType(jsonData) === "array") {
+              newJsonData = [];
+              headers = [Object.keys(jsonData[0])];
+              jsonData.forEach(element => {
+                let oneJson = {};
+                Object.keys(element).forEach(key => {
+                  const value = element[key];
+                  if (dataType(value) === "array" || dataType(value) === "object") {
+                    oneJson[key] = myJsonStringify(value);
+                  } else {
+                    oneJson[key] = value;
+                  }
+                });
+                newJsonData.push(oneJson);
+              });
+              headerWs = XLSX.utils.aoa_to_sheet(headers);
+              ws = window.XLSX.utils.sheet_add_json(headerWs, newJsonData, { skipHeader: true, origin: 'A2' });
+            } else if (dataType(jsonData) === "object") {
+              headers = [Object.keys(jsonData)];
+              newJsonData = {};
+              Object.keys(jsonData).forEach(key => {
+                const value = jsonData[key];
+                if (dataType(value) === "array" || dataType(value) === "object") {
+                  newJsonData[key] = myJsonStringify(value);
+                } else {
+                  newJsonData[key] = value;
+                }
+              });
+              headerWs = XLSX.utils.aoa_to_sheet(headers);
+              ws = window.XLSX.utils.sheet_add_json(headerWs, [newJsonData], { skipHeader: true, origin: 'A2' });
+            }
+            const wb = window.XLSX.utils.book_new();
+            window.XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+            const time = new Date();
+            const timeInfo = (time.getFullYear() + '年' + (time.getMonth() + 1) + '月' + time.getDate() + '日' + time.getHours() + '-' + time.getMinutes() + '-' + time.getSeconds());
+            window.XLSX.writeFile(wb, exportFileName);
+          }
+        }
+        this.$message.success(`导出成功: ${exportFilePath}`);
+      },
+      async importFileJson(file) {
+        const data = await this.__importFile(file);
+        this.jsonEditorLeft.setText(data);
+      },
+
+      async importFileJsonRight(file) {
+        const data = await this.__importFile(file);
+        this.jsonEditorRight.setText(data);
+      },
+
+      async importFileAce(file) {
+        const data = await this.__importFile(file);
+        this.aceEditor.setValue(data);
+      },
+
+      __importFile(file) {
+        return new Promise((resolve, reject) => {
+          this.opName = "importFileData";
+          // 错误情况判断
+          if (!file) {
+            reject(new Error('没有选择文件'));
+            return;
+          } else if (!/\.(xls|xlsx|txt|json|yaml|yml|xml|html|js|java|py|sql|properties)$/.test(file.name.toLowerCase())) {
+            this.$message.error('上传格式不正确，请上传: xls|xlsx|txt|json|yaml|yml|xml|html|js|java|py|sql|properties');
+            reject(new Error('不支持的文件格式'));
+            return;
+          }
+
+          if (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls')) {
+            const fileReader = new FileReader();  // 读取文件
+            fileReader.readAsArrayBuffer(file.raw);
+            fileReader.onload = (e) => {
+              try {
+                const data = e.target.result;  // 获取结果
+                // 获取所有表的信息
+                const workbook = window.XLSX.read(data, {
+                  type: 'binary'  // 以字符编码的方式解析？注意：这里使用ArrayBuffer，但XLSX.read支持arrayBuffer类型
+                });
+                // 获取第一张表的表名
+                const exlname = workbook.SheetNames[0];
+                // 转换成json数据
+                const fileContent = window.XLSX.utils.sheet_to_json(workbook.Sheets[exlname]); // 生成json表格内容
+                resolve(fileContent);
+              } catch (e) {
+                this.$message.error(`文件解析失败: ${e.message}`);
+                reject(e);
+              }
+            };
+            fileReader.onerror = (error) => {
+              this.$message.error(`文件读取失败: ${error.message}`);
+              reject(error);
+            };
+          } else {
+            // 对于非Excel文件，使用流式读取
+            // 注意：这里假设 file.raw.path 是有效的文件路径（在Electron或Node环境中）
+            const chunks = [];
+            const readStream = window.fs.createReadStream(file.raw.path, { encoding: 'utf8' });
+
+            readStream.on('data', (chunk) => {
+              chunks.push(chunk);
+            });
+
+            readStream.on('end', () => {
+              resolve(chunks.join('')); // 如果是文本文件，直接拼接字符串
+            });
+
+            readStream.on('error', (err) => {
+              this.$message.error(`文件读取失败: ${err.message}`);
+              reject(err);
+            });
+          }
+        });
+      },
+      // jsonSchema 转换为 json
+      sToJ() {
+        this.opName = "sToJ";
+        this.isBoxHidden.leftSection = false;
+        this.isBoxHidden.transSortBox = true;
+        this.isBoxHidden.jsonEditorRightBox = false;
+        try {
+          const jsonData = JSONSchemaFaker.generate(editorGet(this.jsonEditorRight), additionalProperties = false);
+          aceEditorInsertData(this.jsonEditorLeft.aceEditor, jsonData);
+        } catch (error) {
+          this.jsonEditorLeft.set("jsonSchemat to json fail: " + error);
+        }
+      },
+      // 内容美化
+      beautifyContent() {
+        // this.opName = "beautifyContent";
+        const editorContent = this.aceEditor.getValue();
+        // const beautify = ace.require("./assets/ace/ext-beautify");
+        const beautifiedContent = beautify.beautify(this.aceEditor.session);
+        // this.aceEditor.setValue(beautifiedContent);
+      },
+      // Base64 解码
+      base64Decode() {
+        try {
+          const content = this.aceEditor.getValue().trim();
+          if (!content) {
+            this.aceEditor.setValue('[错误] 内容为空');
+            return;
+          }
+          const decoded = decodeURIComponent(escape(atob(content)));
+          this.aceEditor.setValue(decoded);
+        } catch (e) {
+          this.aceEditor.setValue('[Base64解码失败] ' + e.message);
+        }
+      },
+      // URL 解码
+      urlDecode() {
+        try {
+          const content = this.aceEditor.getValue().trim();
+          if (!content) {
+            this.aceEditor.setValue('[错误] 内容为空');
+            return;
+          }
+          const decoded = decodeURIComponent(content);
+          this.aceEditor.setValue(decoded);
+        } catch (e) {
+          this.aceEditor.setValue('[URL解码失败] ' + e.message);
+        }
+      },
+      // 清除
+      cleanTransJsonConditions() {
+        this.queryOptions = {
+          path: {
+            field: "",
+          },
+          filter: {
+            field: "",
+            relation: "",
+            value: ""
+          },
+          sort: {
+            field: "",
+            // buy: "value",
+            direction: "desc",
+          },
+          projection: {
+            fields: []
+          }
+        };
+        this.transJson();
+      }
+    },
+    mounted() {
+      // 设置独立窗口模式
+      if (window.utools && typeof utools.setIndependantBrowser === 'function') {
+        utools.setIndependantBrowser(true);
+      }
+      this.initJsonEditor("jsonEditorRight");
+      this.initJsonEditor("jsonEditorLeft");
+      this.initAceEditor();
+      this.initJsonDataByUtoolsData();
+      this.initUtoolsData();
+      this.initDrag();
+    },
+    watch: {
+      opName: {
+        handler: function (newVal, oldVal) {
+          if (newVal.includes("Diff")) {
+            this.diffRender();
+          } else {
+            this.__clearDiffClass();
+          }
+        },
+      },
+      aceLanguage: {
+        handler: function (newVal, oldVal) {
+          if (newVal !== oldVal) {
+            this.switchAceEditorMode();
+          };
+        },
+      },
+      jsonQueryMode: {
+        handler: function (newVal, oldVal) {
+          if (newVal !== oldVal && this.jsonQueryStr) {
+            const path = this.jsonQueryStr.trim();
+            // 切换模式时自动转换语法格式
+            if (newVal === "jq" && oldVal === "jsonpath") {
+              // jsonpath → jq
+              if (path === "$") {
+                this.jsonQueryStr = ".";
+              } else if (path.startsWith("$.")) {
+                // $.items → .items
+                this.jsonQueryStr = path.substring(1);
+              } else if (path.startsWith("$[")) {
+                // $[0] → .[0]
+                this.jsonQueryStr = "." + path.substring(1);
+              }
+            } else if (newVal === "jsonpath" && oldVal === "jq") {
+              // jq → jsonpath
+              if (path === ".") {
+                this.jsonQueryStr = "$";
+              } else if (path.startsWith(".[")) {
+                // .[0] → $[0]
+                this.jsonQueryStr = "$" + path.substring(1);
+              } else if (path.startsWith(".")) {
+                // .items → $.items
+                this.jsonQueryStr = "$" + path;
+              }
+            }
+          }
+        },
+      },
+      jsonEditorLeftMode: {
+        handler: function (newVal, oldVal) {
+          setTimeout(() => {
+            $("#jsonEditorLeftBox .modeActive").removeClass("modeActive");
+            if (newVal === "tree") {
+              $("#jsonEditorLeftBox #setModeTreeBtn").addClass("modeActive");
+            } else {
+              $("#jsonEditorLeftBox #setModeCodeBtn").addClass("modeActive");
+            }
+          }, 100);
+        }
+      },
+      jsonEditorRightMode: {
+        handler: function (newVal, oldVal) {
+          setTimeout(() => {
+            $("#jsonEditorRightBox .modeActive").removeClass("modeActive");
+            if (newVal === "tree") {
+              $("#jsonEditorRightBox #setModeTreeBtn").addClass("modeActive");
+            } else {
+              $("#jsonEditorRightBox #setModeCodeBtn").addClass("modeActive");
+            }
+            window.vm.addJsonEditorRightTreeCheckBox();
+          }, 100);
+        }
+      },
+      jsonRightClassNameMapStr: {
+        handler: function (newVal, oldVal) {
+          if (newVal !== oldVal) {
+            this.addJsonEditorRightTreeCheckBox();
+          }
+        },
+      },
+      // 监控数据变化，保存 schemaOptionUpdata 数据
+      schemaOptionUpdate: {
+        handler: function (newVal, oldVal) {
+          if (typeof utools !== "undefined") {
+            if (utools.db.get("schemaOptionUpdate") && utools.db.get("schemaOptionUpdate")._rev) {
+              utools.db.put({
+                _id: "schemaOptionUpdate",
+                data: newVal,
+                _rev: utools.db.get("schemaOptionUpdate")._rev
+              })
+            } else {
+              utools.db.put({
+                _id: "schemaOptionUpdate",
+                data: newVal
+              })
+            }
+          }
+        },
+        deep: true
+      },
+      // 监控数据变化，保存 schemaOption 数据
+      schemaOption: {
+        handler: function (newVal, oldVal) {
+          if (typeof utools !== "undefined") {
+            if (utools.db.get("schemaOption") && utools.db.get("schemaOption")._rev) {
+              utools.db.put({
+                _id: "schemaOption",
+                data: newVal,
+                _rev: utools.db.get("schemaOption")._rev
+              })
+            } else {
+              utools.db.put({
+                _id: "schemaOption",
+                data: newVal
+              })
+            }
+          }
+        },
+        deep: true
+      },
+      // 监控数据变化，保存 isBoxHidden 数据
+      isBoxHidden: {
+        handler: function (newVal, oldVal) {
+          if (typeof utools !== "undefined") {
+            if (utools.db.get("isBoxHidden") && utools.db.get("isBoxHidden")._rev) {
+              utools.db.put({
+                _id: "isBoxHidden",
+                data: this.isBoxHidden,
+                _rev: utools.db.get("isBoxHidden")._rev
+              })
+            } else {
+              utools.db.put({
+                _id: "isBoxHidden",
+                data: this.isBoxHidden
+              })
+            }
+          }
+          this.hiddenBox();
+        },
+        deep: true
+      }
+    },
+  })
+</script>
+
+<!-- 时间戳预览容器 -->
+<div id="timestampPreviewTooltip" style="display: none; position: fixed; z-index: 10000; background: white; border: 1px solid #ddd; border-radius: 4px; padding: 8px 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); font-size: 13px;">
+  <div class="timestamp-value" style="color: #409EFF; font-weight: bold;"></div>
+</div>
+
+<!-- 图片预览容器 -->
+<div id="imagePreviewTooltip" style="display: none; position: fixed; z-index: 10000; background: white; border: 1px solid #ddd; border-radius: 4px; padding: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
+  <div class="preview-loading" style="color: #909399; padding: 10px;">加载中...</div>
+  <img style="display: none; border-radius: 4px;" />
+</div>
+
+</html>
