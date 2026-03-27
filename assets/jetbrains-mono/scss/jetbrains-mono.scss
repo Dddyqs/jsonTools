@@ -1,0 +1,11 @@
+$font-dir: '../fonts/webfonts' !default;
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  src: local('JetBrains Mono Regular'),
+  local('JetBrainsMono-Regular'),
+  url('#{$font-dir}/JetBrainsMono-Regular.woff2') format('woff2');
+  font-display: swap;
+}
