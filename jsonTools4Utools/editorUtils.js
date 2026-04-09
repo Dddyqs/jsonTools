@@ -1,3 +1,26 @@
+// 辨别数据类型（在 utils.js 之前定义，避免依赖问题）
+const dataType = function (data) {
+    if ((data === null) || data === undefined || typeof data === "null" || typeof data === "undefined") {
+        return "null";
+    } else if (typeof data === "string") {
+        return "string";
+    } else if (typeof data === "number" && LosslessJSON.stringify(data).indexOf(".") === -1 && data.toString().length <= 16) {
+        return "int";
+    } else if (typeof data === "bigint" || (typeof data === "number" && data.toString().length > 16)) {
+        return "bigint";
+    } else if (typeof data === "number" && LosslessJSON.stringify(data).indexOf(".") !== -1) {
+        return "number";
+    } else if (typeof data === "boolean") {
+        return "boolean";
+    } else if (typeof data === "object" && LosslessJSON.stringify(data).indexOf("{") === 0) {
+        return "object";
+    } else if (typeof data === "object" && LosslessJSON.stringify(data).indexOf("[") === 0) {
+        return "array";
+    } else {
+        return "error";
+    }
+};
+
 const myLosslessJSONReplacer = function (key, value) {
     if (typeof value === "number" && value.toString().includes(".")) {
         const decimalCount = value.toString().split(".")[1].length;
@@ -61,7 +84,7 @@ const myJsonStringify = function (jsonData, ...args) {
 
 const editorGetValue = function (editor) {
     if (editor.getValue) {  // Ace editor
-        return aceEditor.getValue();
+        return editor.getValue();
     } else {  // json editor
         return editor.getText();
     }
@@ -78,7 +101,7 @@ const aceEditorInsertData = function (aceEditor, data) {
     let range;
     try {
         // 部分 Ace 版本中方法命名为 getFullDocumentRange()
-        range = doc.getFullDocumentRange();
+        range = aceEditor.session.getFullDocumentRange();
     } catch (e) {
         // 方案2：手动构造完整范围
         const lineCount = aceEditor.session.getLength();
