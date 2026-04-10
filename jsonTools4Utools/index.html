@@ -395,6 +395,15 @@
 <script>
   // ace引入三方组件
   const beautify = ace.require("ace/ext/beautify");
+  // 默认 schema 配置生成函数
+  const createDefaultSchemaOption = () => ({
+    any: { type: true, enum: false, const: true },
+    string: { minLength: false, maxLength: false },
+    number: { minimum: false, maximum: false },
+    object: { properties: true, required: true, minProperties: false, maxProperties: false },
+    array: { items: true, minItems: false, maxItems: false, uniqueItems: false }
+  });
+
   ace.require("ace/ext/language_tools");
   ace.require("ace/ext/searchbox");
   var vm = new Vue({
@@ -498,60 +507,8 @@
         aiModelOptions: [],
         isAiGenerating: false,
         isQueryExecuting: false,
-        schemaOption: {
-          any: {
-            type: true,
-            enum: false,
-            const: true
-          },
-          string: {
-            minLength: false,
-            maxLength: false
-          },
-          number: {
-            minimum: false,
-            maximum: false
-          },
-          object: {
-            properties: true,
-            required: true,
-            minProperties: false,
-            maxProperties: false
-          },
-          array: {
-            items: true,
-            minItems: false,
-            maxItems: false,
-            uniqueItems: false
-          }
-        },
-        schemaOptionUpdate: {
-          any: {
-            type: true,
-            enum: false,
-            const: true
-          },
-          string: {
-            minLength: false,
-            maxLength: false
-          },
-          number: {
-            minimum: false,
-            maximum: false
-          },
-          object: {
-            properties: true,
-            required: true,
-            minProperties: false,
-            maxProperties: false
-          },
-          array: {
-            items: true,
-            minItems: false,
-            maxItems: false,
-            uniqueItems: false
-          }
-        },
+        schemaOption: createDefaultSchemaOption(),
+        schemaOptionUpdate: createDefaultSchemaOption(),
         transOrSort: "",
         transJsonEditorName: "",
         transPaths: [],
@@ -600,7 +557,6 @@
       },
       // format 格式化
       jsonFormat(editorOrEditorEl) {
-        // console.log("jsonFormat");
         let editor = editorOrEditorEl;
         // 判断是否是给的元素
         if (editorOrEditorEl.currentTarget) {
@@ -617,7 +573,6 @@
       },
       // compact 压缩
       jsonCompact(editorOrEditorEl) {
-        // console.log("jsonCompact");
         editor = editorOrEditorEl;
         // 判断是否是给的元素
         if (editorOrEditorEl.currentTarget) {
@@ -714,13 +669,11 @@
       initJsonDataByUtoolsData() {
         if (typeof utools !== "undefined") {
           utools.onPluginEnter(({ code, type, payload }) => {
-            // console.log("utools.onPluginEnter", payload);
 
             try {
               // 能够转义，就转义
               this.jsonEditorLeft.aceEditor.setValue(LosslessJSON.stringify(LosslessJSON.parse(payload), null, 2));
-              // console.log("utools.onPluginEnter", payload);
-            } catch (error) {
+              } catch (error) {
               // 转义异常，就放入原文
               this.jsonEditorLeft.aceEditor.setValue(payload);
             }
@@ -864,7 +817,6 @@
 
         // 监控粘贴操作，格式化json（因为有些json不规范，导致pathMap不准确）
         editorObj.editor.aceEditor.on('paste', (delta) => {
-          // console.log("paste")
           try {
             setTimeout(() => {
               this.opName = 'paste';
@@ -887,7 +839,6 @@
 
         // 监控jsonData变化，每次变化都要更新pathMap
         editorObj.editor.aceEditor.on('change', (delta) => {
-          // console.log("change", delta)
           if (editorObj.editor.aceEditor.getValue() === "" || editorObj.editor.aceEditor.getValue() === "{}") return;
           // 检查变化的内容是否影响到了 jsonpaths（key变化、行数变化）
           const { start, end } = delta;
@@ -967,7 +918,6 @@
 
         // 监控 tree 模式下 className 变化
         editorObj.editor.options.onClassName = function ({ path, field, value }) {
-          // console.log("onClassName", path, field, value);
           // 避免特殊字符被占用，所以选用 ▶ 这个作为 JSONpath 的 分隔符
           let pathStr = `${editorObj.editor.container.id}▶`
           pathStr = pathStr + path.join("▶");
@@ -988,7 +938,6 @@
 
         // 监控该事件，获取当前行的 value 是否是 bigint；拿数据 给 onNodeName 事件 修改显示的数据
         editorObj.editor.options.onEditable = function ({ path, field, value }) {
-          // console.log("onEditable", path, field, value);
           if (!path || path.length === 0) {
             return true;
           }
@@ -1021,7 +970,6 @@
 
         // 监控该事件，修改显示的bigint数据
         // editorObj.editor.options.onExpand = function ({ path, isExpand, recursive }) {
-        //   console.log("onExpand");
         //   if (path && path.length !== 0) {
         //     const nodeName = `${editorObj.editor.container.id}▶` + path.join("▶");
         //     if (vm.bigintNode[nodeName]) {
@@ -1032,7 +980,6 @@
 
         // tree模式增加菜单
         editorObj.editor.options.onCreateMenu = function (items, node) {
-          // console.log("onCreateMenu", items, node);
           if (items.length > 5) { // 大于5个，就是有子节点的
             const funcInfo = {
               className: "jsoneditor-expandSubAll",
@@ -1995,32 +1942,7 @@
       },
       // 重置 schemaOption
       resetSchemOption() {
-        this.schemaOption = {
-          any: {
-            type: true,
-            enum: false,
-            const: false
-          },
-          string: {
-            minLength: false,
-            maxLength: false
-          },
-          number: {
-            minimum: false,
-            maximum: false
-          },
-          object: {
-            properties: true,
-            required: true,
-            minProperties: false,
-            maxProperties: false
-          },
-          array: {
-            items: true,
-            minItems: false,
-            maxItems: false
-          }
-        }
+        this.schemaOption = createDefaultSchemaOption();
       },
       // 收缩JSON
       foldAll(event) {
@@ -2314,32 +2236,7 @@
       },
       // 重置 schemaOptionUpdate
       resetSchemOptionUpdate() {
-        this.schemaOptionUpdate = {
-          any: {
-            type: true,
-            enum: false,
-            const: false
-          },
-          string: {
-            minLength: false,
-            maxLength: false
-          },
-          number: {
-            minimum: false,
-            maximum: false
-          },
-          object: {
-            properties: true,
-            required: true,
-            minProperties: false,
-            maxProperties: false
-          },
-          array: {
-            items: true,
-            minItems: false,
-            maxItems: false
-          }
-        }
+        this.schemaOptionUpdate = createDefaultSchemaOption();
       },
       // json 2 yaml
       jToY() {
@@ -2351,7 +2248,6 @@
         try {
           const jsonStr = this.jsonEditorLeft.getText();
           const jsonData = LosslessJSON.parse(jsonStr, myJsonReviverLong);
-          // console.log(jsonData);
           const yamlStr = cleanLongXML(window.yaml.dump(jsonData));
           this.aceLanguage = "ace/mode/yaml";
           this.aceEditor.setValue(yamlStr);
