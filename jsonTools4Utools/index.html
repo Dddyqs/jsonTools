@@ -395,15 +395,6 @@
 <script>
   // ace引入三方组件
   const beautify = ace.require("ace/ext/beautify");
-  // 默认 schema 配置生成函数
-  const createDefaultSchemaOption = () => ({
-    any: { type: true, enum: false, const: true },
-    string: { minLength: false, maxLength: false },
-    number: { minimum: false, maximum: false },
-    object: { properties: true, required: true, minProperties: false, maxProperties: false },
-    array: { items: true, minItems: false, maxItems: false, uniqueItems: false }
-  });
-
   ace.require("ace/ext/language_tools");
   ace.require("ace/ext/searchbox");
   var vm = new Vue({
@@ -507,8 +498,6 @@
         aiModelOptions: [],
         isAiGenerating: false,
         isQueryExecuting: false,
-        schemaOption: createDefaultSchemaOption(),
-        schemaOptionUpdate: createDefaultSchemaOption(),
         transOrSort: "",
         transJsonEditorName: "",
         transPaths: [],
@@ -596,20 +585,6 @@
       // 初始化数据，从 utools.db 读取
       initUtoolsData() {
         if (typeof utools !== "undefined") {
-          if (
-            utools.db.get("schemaOption")
-            && utools.db.get("schemaOption").data
-            && JSON.stringify(buildPathMap(utools.db.get("schemaOption").data)) === JSON.stringify(buildPathMap(this.schemaOption))
-          ) {
-            this.schemaOption = utools.db.get("schemaOption").data;
-          }
-          if (
-            utools.db.get("schemaOptionUpdate")
-            && utools.db.get("schemaOptionUpdate").data
-            && JSON.stringify(buildPathMap(utools.db.get("schemaOptionUpdate").data)) === JSON.stringify(buildPathMap(this.schemaOptionUpdate))
-          ) {
-            this.schemaOptionUpdate = utools.db.get("schemaOptionUpdate").data;
-          }
           if (
             utools.db.get("isBoxHidden")
             && utools.db.get("isBoxHidden").data
@@ -1299,77 +1274,6 @@
           this.$message.error('JSON解析失败: ' + e.message);
         }
       },
-      // 把json 2 jsonSchema
-      toJsonSchema() {
-        this.opName = "toJsonSchema";
-        this.isBoxHidden.leftSection = false;
-        this.isBoxHidden.transSortBox = true;
-        this.isBoxHidden.jsonEditorRightBox = false;
-        this.isBoxHidden.aceEditorBox = true;
-        this.jsonEditorRight.setMode("code");
-        try {
-          // 更改数据，使 watch 对 checkbox 的增加开始进行
-          this.jsonRightClassNameMap = {};
-          const jsonRightStr = myJsonStringify(getJsonSchemaData(editorGet(this.jsonEditorLeft), this.schemaOption), null, 2);
-          this.jsonEditorRight.updateText(jsonRightStr);
-          // 需要重新渲染 checkbox
-          this.addJsonEditorRightTreeCheckBox();
-        } catch (error) {
-          this.jsonEditorRight.setText(error.message);
-          throw error;
-        }
-      },
-      //jsonSchema验证
-      schema_validate() {
-        this.opName = "schemaValidate";
-        this.isBoxHidden.leftSection = false;
-        this.isBoxHidden.transSortBox = true;
-        this.isBoxHidden.jsonEditorRightBox = false;
-        this.isBoxHidden.aceEditorBox = false;
-        let results = [];
-        try {
-          this.jsonEditorLeft.setSchema(this.jsonEditorRight.get());
-          if (this.jsonEditorLeft.validateSchema.errors && this.jsonEditorLeft.validateSchema.errors.length > 0) {
-            results = this.jsonEditorLeft.validateSchema.errors;
-          }
-        } catch (error) {  // 忽略 schema 错误
-          this.aceEditor.setValue(error.message);
-          return;
-        }
-        let result_str = "";
-        if (results.length > 0) {
-          results.forEach(element => {
-            let instancePath = "$" + element["dataPath"]
-            result_str += results.indexOf(element) + 1 + "." + element["keyword"] + ": " + instancePath + " -- " + element["message"] + "\n";
-          });
-        } else {
-          result_str = "schema validate pass (*^▽^*)";
-        }
-        this.aceEditor.setValue(result_str)
-      },
-      // 把json生成jsonSchema
-      updateSchema() {
-        this.opName = "updateSchema";
-        try {
-          // 更改数据，使 watch 对 checkbox 的增加开始进行
-          this.jsonRightClassNameMap = {};
-          const oldJsonData = editorGet(this.jsonEditorLeft);
-          const oldJsonRightData = editorGet(this.jsonEditorRight);
-          const newSchemaData = updateJsonSchema(oldJsonData, oldJsonRightData, this.schemaOptionUpdate, this.jsonRightTreeSelectedArray);
-          // aceEditorInsertData(this.jsonEditorRight.aceEditor, newSchemaData);
-          this.jsonEditorRight.setText(myJsonStringify(newSchemaData, null, 2));
-          // 需要重新渲染 checkbox
-          this.addJsonEditorRightTreeCheckBox()
-        } catch (error) {
-          // this.aceEditor.setValue(error.message);
-          throw error;
-        }
-      },
-      // 打开 jsonSchema 的学习网页
-      openSchemaLearn() {
-        window.open("https://www.learnjsonschema.com/");
-        utools.shellOpenExternal("https://www.learnjsonschema.com/")
-      },
       // tree模式下的搜索
       treeSearch(editorName) {
         let res;
@@ -1940,10 +1844,6 @@
         }
         this.aceEditor.resize();
       },
-      // 重置 schemaOption
-      resetSchemOption() {
-        this.schemaOption = createDefaultSchemaOption();
-      },
       // 收缩JSON
       foldAll(event) {
         if ($(event.currentTarget).parents("#leftSection").length >= 1) {
@@ -2234,10 +2134,6 @@
         }
         return newJsonData;
       },
-      // 重置 schemaOptionUpdate
-      resetSchemOptionUpdate() {
-        this.schemaOptionUpdate = createDefaultSchemaOption();
-      },
       // json 2 yaml
       jToY() {
         this.opName = "jToy";
@@ -2401,49 +2297,7 @@
       },
       // 切换为树形态时，jsonEditorRight 增加复选框
       addJsonEditorRightTreeCheckBox(editorElId) {
-        if ((this.opName === "toJsonSchema" || this.opName === "updateSchema" || this.opName === "schemaValidate") && this.jsonEditorRightMode === "tree") {
-          // 如果不是 tree 模式 and 没有节点，就退出，不增加 tb
-          if (this.jsonEditorRight.getMode() !== "tree" || Object.keys(window.vm.jsonRightClassNameMap).length === 0) {
-            return
-          }
-          // 0.先把 tb 全部加上
-          const elsAll = $('#jsonEditorRightBox tr td:first-child:not([class=jsoneditor-tree])')
-          const elsAllArray = jQuery.makeArray(elsAll)
-          elsAllArray.forEach(el => {
-            if ($(el).parent().children().length === 3) {
-              $(el).before('<tb></tb>');
-            }
-          })
-          Object.keys(this.jsonRightClassNameMap).forEach(pathStr => {
-            if (!pathStr) {
-              return;
-            }
-            let els = $('.' + pathStr).parents("tr").children();
-            if (els.length === 4) {
-              // 1.加上 tb 包含有 checkbox_path
-              $(els[0]).attr("checkbox_path", pathStr);
-              // 2.再用 tb 加入 checkbox
-              const checkboxEl = this.$el.querySelector('tb[checkbox_path=' + pathStr + "]");
-              if (this.jsonRightClassNameMap[pathStr]) {
-                // 增加元素
-                // 如果上一次勾选了的，这次更新也要默认勾选
-                if (!$(checkboxEl).attr("checked") && window.vm.jsonRightTreeSelectedArray.indexOf(pathStr) > -1) {
-                  $(checkboxEl).html('<input name="" type="checkbox" value="' + pathStr + '" class="editorTreeTb" checked>');
-                } else {
-                  $(checkboxEl).html('<input name="" type="checkbox" value="' + pathStr + '" class="editorTreeTb">');
-                }
-                // 绑定元素的 change 事件, 把勾选的保存起来；取消勾选的，删除已保存的数据
-                $("tb[checkbox_path=" + pathStr + "]" + " input").on("change", function (e) {
-                  if (e.target.checked && window.vm.jsonRightTreeSelectedArray.indexOf(pathStr) === -1) {
-                    window.vm.jsonRightTreeSelectedArray.push(e.target.value);
-                  } else {
-                    window.vm.jsonRightTreeSelectedArray.splice(window.vm.jsonRightTreeSelectedArray.indexOf(e.target.value), 1);
-                  }
-                });
-              }
-            }
-          })
-        }
+        // schema 相关功能已移除
       },
       // 左右对换
       leftRightSwap() {
@@ -3371,19 +3225,6 @@
           }
         });
       },
-      // jsonSchema 转换为 json
-      sToJ() {
-        this.opName = "sToJ";
-        this.isBoxHidden.leftSection = false;
-        this.isBoxHidden.transSortBox = true;
-        this.isBoxHidden.jsonEditorRightBox = false;
-        try {
-          const jsonData = JSONSchemaFaker.generate(editorGet(this.jsonEditorRight), additionalProperties = false);
-          aceEditorInsertData(this.jsonEditorLeft.aceEditor, jsonData);
-        } catch (error) {
-          this.jsonEditorLeft.set("jsonSchemat to json fail: " + error);
-        }
-      },
       // 内容美化
       beautifyContent() {
         // this.opName = "beautifyContent";
@@ -3534,46 +3375,6 @@
             this.addJsonEditorRightTreeCheckBox();
           }
         },
-      },
-      // 监控数据变化，保存 schemaOptionUpdata 数据
-      schemaOptionUpdate: {
-        handler: function (newVal, oldVal) {
-          if (typeof utools !== "undefined") {
-            if (utools.db.get("schemaOptionUpdate") && utools.db.get("schemaOptionUpdate")._rev) {
-              utools.db.put({
-                _id: "schemaOptionUpdate",
-                data: newVal,
-                _rev: utools.db.get("schemaOptionUpdate")._rev
-              })
-            } else {
-              utools.db.put({
-                _id: "schemaOptionUpdate",
-                data: newVal
-              })
-            }
-          }
-        },
-        deep: true
-      },
-      // 监控数据变化，保存 schemaOption 数据
-      schemaOption: {
-        handler: function (newVal, oldVal) {
-          if (typeof utools !== "undefined") {
-            if (utools.db.get("schemaOption") && utools.db.get("schemaOption")._rev) {
-              utools.db.put({
-                _id: "schemaOption",
-                data: newVal,
-                _rev: utools.db.get("schemaOption")._rev
-              })
-            } else {
-              utools.db.put({
-                _id: "schemaOption",
-                data: newVal
-              })
-            }
-          }
-        },
-        deep: true
       },
       // 监控数据变化，保存 isBoxHidden 数据
       isBoxHidden: {
