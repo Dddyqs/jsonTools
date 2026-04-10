@@ -1,8 +1,8 @@
 const yaml = require("./assets/js-yaml");
 const fs = require('fs');
 const path = require('path');
-const { raw: jqRaw, json: jqJson, version: jqVersion } = require("jq-wasm");
+const { raw: jaqRaw, json: jaqJson, version: jaqVersion } = require("./assets/jaq-index.js");
 window.path = path;
 window.yaml = yaml;
 window.fs = fs;
-window.jqWasm = { raw: jqRaw, json: jqJson, version: jqVersion };
+window.jaqWasm = { raw: jaqRaw, json: jaqJson, version: jaqVersion };

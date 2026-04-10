@@ -9,9 +9,6 @@
   <link rel="stylesheet" href="./assets/jsoneditor10.2.0.min.css">
   <link rel="stylesheet" href="./assets/jetbrains-mono/css/jetbrains-mono.css">
   <link rel="stylesheet" href="./styles/main.css">
-  
-  <!-- 性能优化工具 -->
-  <script src="./scripts/utils/performance.js"></script>
 </head>
 
 <body>
@@ -1495,12 +1492,12 @@
             }
             resJsonData = vm.jsonEditorLeft.options.executeQuery(jsonData, this.jsonQueryStr)
           } else if (this.jsonQueryMode === "jq") {
-            // 检查 jqWasm 是否可用
-            if (!window.jqWasm) {
-              throw new Error('jq 模块未加载，请检查 preload.js 是否正确引入 jq-index.js');
+            // 检查 jaqWasm 是否可用
+            if (!window.jaqWasm) {
+              throw new Error('jaq 模块未加载，请检查 preload.js 是否正确引入 jaq-wasm');
             }
-            const jqResult = await window.jqWasm.json(jsonData, this.jsonQueryStr);
-            resJsonData = jqResult;
+            const jaqResult = await window.jaqWasm.json(jsonData, this.jsonQueryStr);
+            resJsonData = jaqResult;
           }
 
           // 判断结果类型：JSON（对象/数组）展示在JSON面板，文本展示在编辑器
