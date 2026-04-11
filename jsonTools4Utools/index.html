@@ -531,6 +531,10 @@
         if (str.startsWith('$')) {
           return 'jsonpath';
         }
+        // 检测是否是 jmespath 语法（以 @ 开头或包含 jmespath 特定语法）
+        if (str.startsWith('@') || /^\s*[\w\[]+\[\?/.test(str) || /^\s*\[\*\]/.test(str) || /\|\s*(sort_by|filter|join|contains|starts_with|ends_with|length|keys|values)\s*\(/.test(str) || /\[\?\s*\(/.test(str)) {
+          return 'jmespath';
+        }
         // 检测是否是 jq 语法（以 . 开头或包含 jq 特定语法）
         if (str.startsWith('.') || /^\s*\w+\s*\(|map\(|select\(|keys\(|values\(|\.[]|\.[]/.test(str)) {
           return 'jq';

@@ -490,6 +490,11 @@ span {
   color: white;
 }
 
+.query-mode-tag.mode-jmespath {
+  background-color: #909399;
+  color: white;
+}
+
 .query-mode-tag.mode-ai {
   background-color: #E6A23C;
   color: white;
