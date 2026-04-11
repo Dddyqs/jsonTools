@@ -801,34 +801,14 @@
         this.aceEditor.setReadOnly(false);
         //自动换行,设置为off关闭
         this.aceEditor.setOption("wrap", "free")
-        // //启用提示菜单
-        // this.aceEditor.require("ace/ext/language_tools");
-        // ace.require("ace/ext/language_tools");
-        //去除中间的竖线
-        // this.aceEditor.renderer.displayIndentGuides(false);
         this.aceEditor.setOptions({
-          // 字体（只有这个字体可以解决 等宽字体带来的光标错位）
-          // fontFamily: "Consolas",
-          // 基础自动完成
           enableBasicAutocompletion: true,
-          // 代码块
           enableSnippets: true,
-          // 实时自动完成
           enableLiveAutocompletion: true,
-          // 显示行号
           showLineNumbers: true,
-          // 连字功能
           enableLigatures: false
         });
         this.aceEditor.$blockScrolling = Infinity;
-        // this.aceEditor.session.on('change', (delta) => {
-        //   // if
-        //   const newStr = delta.lines.join("\n");
-        //   if (this.transJsonEditorName && this.jsonQueryStr.replaceAll(/\n|\t| /g, "") !== newStr.replaceAll(/\n|\t| /g, "")) {
-        //     this.jsonQueryMode = "jmespath";
-        //     this.jsonQueryStr = this.aceEditor.getValue().replaceAll(/\n|\t/g, "");
-        //   }
-        // });
       },
 
       // 监控editor的事件
@@ -1005,15 +985,6 @@
           return true;
         }
 
-        // 监控该事件，修改显示的bigint数据
-        // editorObj.editor.options.onExpand = function ({ path, isExpand, recursive }) {
-        //   if (path && path.length !== 0) {
-        //     const nodeName = `${editorObj.editor.container.id}▶` + path.join("▶");
-        //     if (vm.bigintNode[nodeName]) {
-        //       $(`${nodeName} .jsoneditor-value`).text(vm.bigintNode[nodeName]);
-        //     }
-        //   }
-        // }
 
         // tree模式增加菜单
         editorObj.editor.options.onCreateMenu = function (items, node) {
@@ -2241,10 +2212,6 @@
       switchAceEditorMode() {
         this.aceEditor.session.setMode(this.aceLanguage);
       },
-      // 切换为树形态时，jsonEditorRight 增加复选框
-      addJsonEditorRightTreeCheckBox(editorElId) {
-        // schema 相关功能已移除
-      },
       // 左右对换
       leftRightSwap() {
         const leftText = this.jsonEditorLeft.getText();
@@ -3320,16 +3287,8 @@
             } else {
               $("#jsonEditorRightBox #setModeCodeBtn").addClass("modeActive");
             }
-            window.vm.addJsonEditorRightTreeCheckBox();
           }, 100);
         }
-      },
-      jsonRightClassNameMapStr: {
-        handler: function (newVal, oldVal) {
-          if (newVal !== oldVal) {
-            this.addJsonEditorRightTreeCheckBox();
-          }
-        },
       },
       // 监控数据变化，保存 isBoxHidden 数据
       isBoxHidden: {
