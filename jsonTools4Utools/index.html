@@ -35,12 +35,10 @@
       <el-button id="leftRightSwap" plain type="success" size="mini" @click="leftRightSwap">左右对换</el-button>
       <span :style="{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '50%', backgroundColor: jsonEditorActive === '左' ? '#409EFF' : '#8E44AD', color: '#fff', fontSize: '11px' }">{{ jsonEditorActive }}</span>
       <el-autocomplete id="jsonQuery" class="jsonQuery" v-model="jsonQueryStr" :fetch-suggestions="querySearch"
-        placeholder="请输入查询..." @change="getJsonByQuery('output')" style="margin-left: 2px;">
-        <el-select v-model="jsonQueryMode" slot="prepend" placeholder="请选择查询方式" style="width: 100px;" @change="handleQueryModeChange">
-          <el-option label="jsonpath" value="jsonpath">jsonpath</el-option>
-          <el-option label="jq" value="jq">jq</el-option>
-          <el-option label="AI" value="ai">AI</el-option>
-        </el-select>
+        placeholder="输入查询(自动识别jsonpath/jq/AI)..." @change="getJsonByQuery('output')" style="margin-left: 2px;">
+        <template slot="prepend">
+          <span class="query-mode-tag" :class="'mode-' + jsonQueryMode">{{ jsonQueryMode }}</span>
+        </template>
         <el-button slot="append" size="mini" :disabled="jsonQueryMode==='ai' && isAiGenerating" @click="getJsonByQuery('output')" style="min-width: 60px; padding: 0 8px;">{{ jsonQueryMode==='ai' && isAiGenerating ? '生成中...' : '执行' }}</el-button>
         <el-button slot="append" v-if="jsonQueryMode==='jsonpath'" size="mini" @click="replaceJsonByJsonpath('output')" style="padding: 0 8px;">替换</el-button>
       </el-autocomplete>
@@ -524,9 +522,21 @@
       }
     },
     methods: {
-      // 查询模式切换处理
-      handleQueryModeChange(mode) {
-        // 切换到AI模式时不清空输入框，保留用户输入的内容
+      // 自动检测查询模式
+      detectQueryMode(queryStr) {
+        const str = queryStr.trim();
+        if (!str) return 'jsonpath'; // 默认 jsonpath
+
+        // 检测是否是 jsonpath 语法（以 $ 开头）
+        if (str.startsWith('$')) {
+          return 'jsonpath';
+        }
+        // 检测是否是 jq 语法（以 . 开头或包含 jq 特定语法）
+        if (str.startsWith('.') || /^\s*\w+\s*\(|map\(|select\(|keys\(|values\(|\.[]|\.[]/.test(str)) {
+          return 'jq';
+        }
+        // 默认为 AI 模式（自然语言处理）
+        return 'ai';
       },
       // 关闭box
       __closeBox(boxName) {
@@ -1283,31 +1293,12 @@
       },
       //根据jsonpath、jmespath、jq、AI获取数据
       async getJsonByQuery(op) {
-        // AI模式下，先检查输入是否是直接的jsonpath、jq或jmespath语法
+        // 自动检测查询模式
+        const detectedMode = this.detectQueryMode(this.jsonQueryStr);
+        this.jsonQueryMode = detectedMode;
+
+        // 如果是 AI 模式，调用 AI 处理
         if (this.jsonQueryMode === "ai") {
-          const queryStr = this.jsonQueryStr.trim();
-          // 检测是否是jsonpath语法（以$开头）
-          if (queryStr.startsWith('$')) {
-            this.jsonQueryMode = 'jsonpath';
-            await this.getJsonByQuery(op);
-            this.jsonQueryMode = 'ai'; // 执行完后恢复AI模式
-            return;
-          }
-          // 检测是否是jq语法（以.开头或包含jq特定语法）
-          if (queryStr.startsWith('.') || /^\s*\w+\s*\(|map\(|select\(|keys\(|values\(/.test(queryStr)) {
-            this.jsonQueryMode = 'jq';
-            await this.getJsonByQuery(op);
-            this.jsonQueryMode = 'ai'; // 执行完后恢复AI模式
-            return;
-          }
-          // 检测是否是jmespath语法（以@开头或包含jmespath特定语法如[*]、[]等）
-          if (queryStr.startsWith('@') || /^\s*[\w\[]+\[\?/.test(queryStr) || /^\s*\[\*\]/.test(queryStr) || /\|\s*(sort_by|filter|join|contains|starts_with|ends_with|length|keys|values)\s*\(/.test(queryStr)) {
-            this.jsonQueryMode = 'jmespath';
-            await this.getJsonByQuery(op);
-            this.jsonQueryMode = 'ai'; // 执行完后恢复AI模式
-            return;
-          }
-          // 不是查询语法，调用AI处理
           await this.handleAiDirectQuery();
           return;
         }
@@ -3320,6 +3311,15 @@
       this.initDrag();
     },
     watch: {
+      // 监听查询输入，实时更新模式显示
+      jsonQueryStr: {
+        handler: function (newVal, oldVal) {
+          if (newVal !== oldVal) {
+            this.jsonQueryMode = this.detectQueryMode(newVal);
+          }
+        },
+        immediate: true,
+      },
       opName: {
         handler: function (newVal, oldVal) {
           if (newVal.includes("Diff")) {
