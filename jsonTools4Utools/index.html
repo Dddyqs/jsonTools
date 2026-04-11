@@ -526,19 +526,78 @@
         const str = queryStr.trim();
         if (!str) return 'jsonpath'; // 默认 jsonpath
 
-        // 检测是否是 jsonpath 语法（以 $ 开头）
+        // ========== JSONPath 检测 ==========
+        // 以 $ 开头是 jsonpath 的典型特征
         if (str.startsWith('$')) {
           return 'jsonpath';
         }
-        // 检测是否是 jmespath 语法（以 @ 开头或包含 jmespath 特定语法）
-        if (str.startsWith('@') || /^\s*[\w\[]+\[\?/.test(str) || /^\s*\[\*\]/.test(str) || /\|\s*(sort_by|filter|join|contains|starts_with|ends_with|length|keys|values)\s*\(/.test(str) || /\[\?\s*\(/.test(str)) {
-          return 'jmespath';
+
+        // ========== JMESPath 检测 ==========
+        // jmespath 特有语法
+        const jmespathPatterns = [
+          /^@/,                          // @ 当前节点
+          /\[\?\s*\(/,                   // [?( 过滤表达式
+          /^\s*\[\*\]/,                  // [*] 通配
+          /\|\s*sort_by\s*\(/,           // | sort_by(
+          /\|\s*filter\s*\(/,            // | filter(
+          /\|\s*max_by\s*\(/,            // | max_by(
+          /\|\s*min_by\s*\(/,            // | min_by(
+          /\|\s*not_null\s*\(/,          // | not_null(
+          /\|\s*to_string\s*\(/,         // | to_string(
+          /\|\s*to_number\s*\(/,         // | to_number(
+          /\.\s*@/,                      // .@ 当前节点引用
+          /\[\s*\*\s*\]/,                // [*] 数组通配
+          /\[\s*\d+\s*:\s*\d*\s*\]/,     // [start:end] 切片
+          /\[\s*\d+\s*:\s*:\s*\d+\s*\]/, // [start::step] 切片
+        ];
+        for (const pattern of jmespathPatterns) {
+          if (pattern.test(str)) {
+            return 'jmespath';
+          }
         }
-        // 检测是否是 jq 语法（以 . 开头或包含 jq 特定语法）
-        if (str.startsWith('.') || /^\s*\w+\s*\(|map\(|select\(|keys\(|values\(|\.[]|\.[]/.test(str)) {
-          return 'jq';
+
+        // ========== JQ 检测 ==========
+        // jq 特有语法
+        const jqPatterns = [
+          /^\./,                         // . 开头
+          /\bmap\s*\(/,                  // map(
+          /\bselect\s*\(/,               // select(
+          /\bgroup_by\s*\(/,             // group_by(
+          /\bunique\s*\(/,               // unique(
+          /\bsort\s*\(/,                 // sort(
+          /\bflatten\s*\(/,              // flatten(
+          /\bkeys\s*\(/,                 // keys(
+          /\bvalues\s*\(/,               // values(
+          /\bto_entries\s*\(/,           // to_entries(
+          /\bfrom_entries\s*\(/,         // from_entries(
+          /\bwith_entries\s*\(/,         // with_entries(
+          /\badd\s*\(/,                  // add(
+          /\.\[\s*\]/,                   // .[] 迭代
+          /\|\s*\./,                     // | . 管道后接选择器
+          /\s+as\s+\$\w+\s*\|/,          // as $var | 变量绑定
+          /\breduce\s+/,                 // reduce 结构
+          /\bforeach\s+/,                // foreach 结构
+          /\/\/\s*\./,                   // // 错误处理
+          /\?\/\//,                      // ?// 可选错误处理
+          /@base64\b/,                   // @base64 格式化
+          /@uri\b/,                      // @uri 格式化
+          /@csv\b/,                      // @csv 格式化
+          /@tsv\b/,                      // @tsv 格式化
+          /@html\b/,                     // @html 格式化
+          /@json\b/,                     // @json 格式化
+          /@text\b/,                     // @text 格式化
+          /\bif\s+.+\s+then\s+.+\s+(else\s+.+\s+)?end\b/, // if-then-else-end 结构
+          /\btry\s+/,                    // try 结构
+          /\bcatch\s+/,                  // catch 结构
+        ];
+        for (const pattern of jqPatterns) {
+          if (pattern.test(str)) {
+            return 'jq';
+          }
         }
-        // 默认为 AI 模式（自然语言处理）
+
+        // ========== 默认 AI 模式 ==========
+        // 无法识别的语法，当作自然语言处理
         return 'ai';
       },
       // 关闭box
