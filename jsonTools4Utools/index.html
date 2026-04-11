@@ -35,7 +35,7 @@
       <el-button id="leftRightSwap" plain type="success" size="mini" @click="leftRightSwap">左右对换</el-button>
       <span :style="{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '50%', backgroundColor: jsonEditorActive === '左' ? '#409EFF' : '#8E44AD', color: '#fff', fontSize: '11px' }">{{ jsonEditorActive }}</span>
       <el-autocomplete id="jsonQuery" class="jsonQuery" v-model="jsonQueryStr" :fetch-suggestions="querySearch"
-        placeholder="输入查询(自动识别jsonpath/jq/AI)..." @change="getJsonByQuery('output')" style="margin-left: 2px;">
+        placeholder="输入查询(自动识别jsonpath/jmespath/jq/AI)..." @change="getJsonByQuery('output')" style="margin-left: 2px;">
         <template slot="prepend">
           <span class="query-mode-tag" :class="'mode-' + jsonQueryMode">{{ jsonQueryMode }}</span>
         </template>
