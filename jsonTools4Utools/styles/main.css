@@ -467,35 +467,3 @@ span {
   justify-content: flex-end;
   gap: 10px;
 }
-
-/* ==================== 查询模式标签样式 ==================== */
-
-.query-mode-tag {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 3px;
-  font-size: 12px;
-  font-weight: 500;
-  min-width: 60px;
-  text-align: center;
-}
-
-.query-mode-tag.mode-jsonpath {
-  background-color: #409EFF;
-  color: white;
-}
-
-.query-mode-tag.mode-jq {
-  background-color: #67C23A;
-  color: white;
-}
-
-.query-mode-tag.mode-jmespath {
-  background-color: #909399;
-  color: white;
-}
-
-.query-mode-tag.mode-ai {
-  background-color: #E6A23C;
-  color: white;
-}
