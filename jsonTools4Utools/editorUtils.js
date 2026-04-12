@@ -94,7 +94,7 @@ const editorGet = function (editor) {
     return myJsonParse(editorGetValue(editor));
 }
 
-const aceEditorInsertData = function (aceEditor, data) {
+const aceEditorInsertData = function (aceEditor, data, skipGotoLine = false) {
     const row = aceEditor.getSelectionRange().end.row;
     const column = aceEditor.getSelectionRange().end.column;
     // 方案1：优先尝试使用 getFullDocumentRange
@@ -127,8 +127,10 @@ const aceEditorInsertData = function (aceEditor, data) {
     } else {
         aceEditor.setValue(jsonStr);
     }
-    // 可选：保持光标位置
-    aceEditor.gotoLine(row + 1, column);
+    // 可选：保持光标位置（默认跳过，避免触发光标变化事件）
+    if (!skipGotoLine) {
+        aceEditor.gotoLine(row + 1, column);
+    }
 }
 
 

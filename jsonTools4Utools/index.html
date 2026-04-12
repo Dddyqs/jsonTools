@@ -9,175 +9,135 @@
   <link rel="stylesheet" href="./assets/jsoneditor10.2.0.min.css">
   <link rel="stylesheet" href="./assets/jetbrains-mono/css/jetbrains-mono.css">
   <link rel="stylesheet" href="./styles/main.css">
+  <style>
+    .jsonQuery .el-input__inner {
+      border-color: var(--active-color, #409EFF);
+    }
+    .jsonQuery .el-input__inner:focus {
+      border-color: var(--active-color, #409EFF);
+    }
+    .jsonQuery .el-input-group__append {
+      border-color: var(--active-color, #409EFF);
+    }
+    .left-checkbox .el-checkbox__input.is-checked .el-checkbox__inner,
+    .left-checkbox .el-checkbox__input.is-indeterminate .el-checkbox__inner {
+      background-color: #409EFF;
+      border-color: #409EFF;
+    }
+    .right-checkbox .el-checkbox__input.is-checked .el-checkbox__inner,
+    .right-checkbox .el-checkbox__input.is-indeterminate .el-checkbox__inner {
+      background-color: #8E44AD;
+      border-color: #8E44AD;
+    }
+    .editor-checkbox .el-checkbox__input.is-checked .el-checkbox__inner,
+    .editor-checkbox .el-checkbox__input.is-indeterminate .el-checkbox__inner {
+      background-color: #E6A23C;
+      border-color: #E6A23C;
+    }
+  </style>
 </head>
 
 <body>
   <el-container id="app" class="app">
-    <el-header id="funcsBar" class="funcsBar" style="display: flex; justify-content: center; align-items: center; gap: 8px;">
-      <el-dropdown :hide-on-click="false">
-        <el-button plain type="success" size="mini">导入<i class="el-icon-arrow-down el-icon--right"></i></el-button>
-        <el-dropdown-menu slot="dropdown">
-          <el-dropdown-item><el-upload class="upload-demo" ref="upload" accept=".xlsx,.xlx,.json,.txt"
-              :show-file-list="false" :auto-upload="false" action="" :on-change="importFileJson">
-              <el-button slot="trigger" plain type="success" size="mini" icon="el-icon-upload2">左边</el-button>
-            </el-upload></el-dropdown-item>
-          <el-dropdown-item><el-upload class="upload-demo" ref="upload" accept=".xlsx,.xlx,.json,.txt"
-              :show-file-list="false" :auto-upload="false" action="" :on-change="importFileJsonRight">
-              <el-button slot="trigger" plain type="success" size="mini" icon="el-icon-upload2">右边</el-button>
-            </el-upload></el-dropdown-item>
-          <el-dropdown-item><el-upload class="upload-demo" ref="upload"
-              accept=".xlsx,.xlx,.json,.txt,.yaml,.yml,.xml,.html,.js,.java,.py,.sql,.properties"
-              :show-file-list="false" :auto-upload="false" action="" :on-change="importFileAce">
-              <el-button slot="trigger" plain type="success" size="mini" icon="el-icon-upload2">右下</el-button>
-            </el-upload></el-dropdown-item>
-        </el-dropdown-menu>
-      </el-dropdown>
-      <el-button id="leftRightSwap" plain type="success" size="mini" @click="leftRightSwap">左右对换</el-button>
-      <span :style="{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '50%', backgroundColor: jsonEditorActive === '左' ? '#409EFF' : '#8E44AD', color: '#fff', fontSize: '11px' }">{{ jsonEditorActive }}</span>
-      <el-autocomplete id="jsonQuery" class="jsonQuery" v-model="jsonQueryStr" :fetch-suggestions="querySearch"
-        placeholder="输入查询(自动识别jsonpath/jmespath/jq/自然语言)..." @change="getJsonByQuery('output')" style="margin-left: 2px;">
-        <el-button slot="append" size="mini" :disabled="jsonQueryMode==='ai' && isAiGenerating" @click="getJsonByQuery('output')" style="min-width: 60px; padding: 0 8px;">{{ jsonQueryMode==='ai' && isAiGenerating ? '生成中...' : '执行' }}</el-button>
-      </el-autocomplete>
-
-      <el-dropdown :hide-on-click="false">
-        <el-badge :value="jsonDiffCount" :max="999" class="item">
-          <el-button plain type="success" size="mini" @click="jsonDiff">json对比<i
-              class="el-icon-arrow-down el-icon--right"></i></el-button>
-        </el-badge>
-        <el-dropdown-menu slot="dropdown">
-          <el-dropdown-item><el-button v-if="jsonDiffCount > 0"
-              @click="switchDiff('down')">下一个差异</el-button></el-dropdown-item>
-          <el-dropdown-item><el-button v-if="jsonDiffCount === 0" @click="switchDiff('down')"
-              disabled>下一个差异</el-button></el-dropdown-item>
-          <el-dropdown-item><el-button v-if="jsonDiffCount > 0"
-              @click="switchDiff('up')">上一个差异</el-button></el-dropdown-item>
-          <el-dropdown-item><el-button v-if="jsonDiffCount === 0" @click="switchDiff('up')"
-              disabled>上一个差异</el-button></el-dropdown-item>
-          <el-dropdown-item><el-checkbox v-model="isAsyncScrollView">是否同步滑动</el-checkbox></el-dropdown-item>
-          <el-dropdown-item><el-button @click="__clearDiffClass">清除对比渲染</el-button></el-dropdown-item>
-        </el-dropdown-menu>
-      </el-dropdown>
-      <el-dropdown :hide-on-click="false">
-        <el-button plain type="success" size="mini">json转换<i class="el-icon-arrow-down el-icon--right"></i></el-button>
-        <el-dropdown-menu slot="dropdown">
-          <h4>json & yaml</h4>
-          <el-dropdown-item><el-button plain type="success" @click="jToY" size="mini">json >>
-              yaml</el-button></el-dropdown-item>
-          <el-dropdown-item><el-button plain type="success" @click="yToJ" size="mini">json &lt;&lt; yaml
-            </el-button></el-dropdown-item>
-          <h4>json & xml</h4>
-          <el-dropdown-item><el-button plain type="success" @click="jToX" size="mini">json >>
-              xml</el-button></el-dropdown-item>
-          <el-dropdown-item><el-button plain type="success" @click="xToJ" size="mini">json &lt;&lt; xml
-            </el-button></el-dropdown-item>
-          <h4>json & properties</h4>
-          <el-dropdown-item><el-button plain type="success" @click="jToP" size="mini">json >>
-              properties</el-button></el-dropdown-item>
-          <el-dropdown-item><el-button plain type="success" @click="pToJ" size="mini">json &lt;&lt; properties
-            </el-button></el-dropdown-item>
-          <h4>json & http query</h4>
-          <el-dropdown-item><el-button plain type="success" @click="jToH" size="mini">json >>
-              http query</el-button></el-dropdown-item>
-          <el-dropdown-item><el-button plain type="success" @click="hToJ" size="mini">json &lt;&lt; http query
-            </el-button></el-dropdown-item>
-        </el-dropdown-menu>
-      </el-dropdown>
-      <el-dropdown :hide-on-click="false" trigger="click">
-        <el-button plain type="success" size="mini">导出<i class="el-icon-arrow-down el-icon--right"></i></el-button>
-        <el-dropdown-menu slot="dropdown">
-          <el-dropdown-item>
-            <el-popover placement="right" width="50" trigger="hover">
-              <el-dropdown-item><el-button @click="exportFile('left', 'txt')">txt</el-button></el-dropdown-item>
-              <el-dropdown-item><el-button @click="exportFile('left', 'json')">json</el-button></el-dropdown-item>
-              <el-dropdown-item><el-button @click="exportFile('left', 'xlsx')">xlsx</el-button></el-dropdown-item>
-              <el-button plain type="success" size="mini" icon="el-icon-download" slot="reference">
-                左边
-                <i class="el-icon-arrow-right el-icon--right" style="cursor: pointer;"></i>
-              </el-button>
-            </el-popover>
-          </el-dropdown-item>
-          <el-dropdown-item>
-            <el-popover placement="right" width="50" trigger="hover">
-              <el-dropdown-item><el-button @click="exportFile('right', 'txt')">txt</el-button></el-dropdown-item>
-              <el-dropdown-item><el-button @click="exportFile('right', 'json')">json</el-button></el-dropdown-item>
-              <el-dropdown-item><el-button @click="exportFile('right', 'xlsx')">xlsx</el-button></el-dropdown-item>
-              <el-button plain type="success" size="mini" icon="el-icon-download" slot="reference">
-                右边
-                <i class="el-icon-arrow-right el-icon--right" style="cursor: pointer;"></i>
-              </el-button>
-            </el-popover>
-          </el-dropdown-item>
-
-          <el-dropdown-item>
-            <el-popover placement="right" width="100px" trigger="hover">
-              <el-dropdown-item><el-button @click="exportFile('ace', 'txt')">txt</el-button></el-dropdown-item>
-              <el-dropdown-item><el-button @click="exportFile('ace', 'json')">json</el-button></el-dropdown-item>
-              <el-dropdown-item><el-button @click="exportFile('ace', 'yaml')">yaml</el-button></el-dropdown-item>
-              <el-dropdown-item><el-button @click="exportFile('ace', 'xml')">xml</el-button></el-dropdown-item>
-              <el-dropdown-item><el-button @click="exportFile('ace', 'html')">html</el-button></el-dropdown-item>
-              <el-dropdown-item><el-button @click="exportFile('ace', 'js')">js</el-button></el-dropdown-item>
-              <el-dropdown-item><el-button @click="exportFile('ace', 'java')">java</el-button></el-dropdown-item>
-              <el-dropdown-item><el-button @click="exportFile('ace', 'py')">py</el-button></el-dropdown-item>
-              <el-dropdown-item><el-button @click="exportFile('ace', 'sql')">sql</el-button></el-dropdown-item>
-              <el-dropdown-item><el-button
-                  @click="exportFile('ace', 'properties')">properties</el-button></el-dropdown-item>
-              <el-button plain type="success" size="mini" icon="el-icon-download" slot="reference">
-                右下
-                <i class="el-icon-arrow-right el-icon--right" style="cursor: pointer;"></i>
-              </el-button>
-            </el-popover>
-          </el-dropdown-item>
-        </el-dropdown-menu>
-      </el-dropdown>
-      <el-dropdown class="settings-dropdown" :hide-on-click="false" trigger="click">
-        <el-button type="text" size="mini" title="显示设置">
-          <i class="el-icon-setting" style="font-size: 18px;"></i>
-        </el-button>
-        <el-dropdown-menu slot="dropdown">
-          <el-dropdown-item><el-checkbox v-model="isBoxHidden.funcsBar"
-              @change="hiddenBox">功能栏</el-checkbox></el-dropdown-item>
-          <el-dropdown-item><el-checkbox v-model="isBoxHidden.leftSection" @change="hiddenBox"><span style="display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background-color: #409EFF; color: #fff; font-size: 10px;">左</span></el-checkbox></el-dropdown-item>
-          <el-dropdown-item><el-checkbox v-model="isBoxHidden.jsonEditorRightBox" @change="hiddenBox"><span style="display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background-color: #8E44AD; color: #fff; font-size: 10px;">右</span></el-checkbox></el-dropdown-item>
-          <el-dropdown-item><el-checkbox v-model="isBoxHidden.aceEditorBox"
-              @change="hiddenBox">编辑器</el-checkbox></el-dropdown-item>
-          <el-dropdown-item divided>AI模型</el-dropdown-item>
-          <el-dropdown-item>
-            <el-select v-model="aiModel" size="mini" style="width: 150px;" @change="saveAiModel">
-              <el-option v-for="item in aiModelOptions" :key="item.value" :label="item.label" :value="item.value"></el-option>
-            </el-select>
-          </el-dropdown-item>
-        </el-dropdown-menu>
-      </el-dropdown>
+    <el-header id="funcsBar" class="funcsBar" style="display: flex; flex-direction: column; padding: 10px; height: auto;">
+      <!-- 第一行：查询相关 -->
+      <div style="display: flex; justify-content: flex-start; align-items: center; gap: 8px; width: 100%;">
+        <el-button id="leftRightSwap" plain type="success" size="mini" @click="leftRightSwap">左右对换</el-button>
+        <span :style="{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '50%', backgroundColor: jsonEditorActive === '左' ? '#409EFF' : '#8E44AD', color: '#fff', fontSize: '11px' }">{{ jsonEditorActive }}</span>
+        <el-autocomplete id="jsonQuery" class="jsonQuery" v-model="jsonQueryStr" :fetch-suggestions="querySearch"
+          placeholder="" @change="handleQuerySubmit('output')"
+          :style="{ marginLeft: '2px', flex: '1', maxWidth: '400px', '--active-color': jsonEditorActive === '左' ? '#409EFF' : '#8E44AD' }">
+          <el-button slot="append" size="mini" :disabled="isAiGenerating" @click="handleQuerySubmit('output')"
+            :style="{ minWidth: '72px', backgroundColor: jsonEditorActive === '左' ? '#409EFF' : '#8E44AD', color: '#fff', borderColor: jsonEditorActive === '左' ? '#409EFF' : '#8E44AD' }">{{ isAiGenerating ? '处理中...' : '执行' }}</el-button>
+          <template slot-scope="{ item }">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+              <span style="flex: 1;">{{ item.value }}</span>
+              <el-button v-if="item.value !== ''" type="text" size="mini" icon="el-icon-close" @click.stop="removeHistoryItem(item.value)" style="padding: 0; margin-left: 10px; color: #909399;"></el-button>
+            </div>
+          </template>
+          <div slot="suffix" style="display: none;"></div>
+        </el-autocomplete>
+        <el-dropdown :hide-on-click="false">
+          <el-badge :value="jsonDiffCount" :max="999" class="item">
+            <el-button plain type="success" size="mini" @click="jsonDiff">json对比<i class="el-icon-arrow-down el-icon--right"></i></el-button>
+          </el-badge>
+          <el-dropdown-menu slot="dropdown">
+            <el-dropdown-item><el-button v-if="jsonDiffCount > 0" @click="switchDiff('down')">下一个差异</el-button></el-dropdown-item>
+            <el-dropdown-item><el-button v-if="jsonDiffCount === 0" @click="switchDiff('down')" disabled>下一个差异</el-button></el-dropdown-item>
+            <el-dropdown-item><el-button v-if="jsonDiffCount > 0" @click="switchDiff('up')">上一个差异</el-button></el-dropdown-item>
+            <el-dropdown-item><el-button v-if="jsonDiffCount === 0" @click="switchDiff('up')" disabled>上一个差异</el-button></el-dropdown-item>
+            <el-dropdown-item><el-checkbox v-model="isAsyncScrollView">是否同步滑动</el-checkbox></el-dropdown-item>
+            <el-dropdown-item><el-button @click="__clearDiffClass">清除对比渲染</el-button></el-dropdown-item>
+          </el-dropdown-menu>
+        </el-dropdown>
+        <el-checkbox v-if="isBoxHidden.leftSection" :value="!isBoxHidden.leftSection" @input="val => { isBoxHidden.leftSection = !val; hiddenBox(); }" style="margin-right: 10px; color: #409EFF;" class="left-checkbox">
+          勾选展示<span style="display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background-color: #409EFF; color: #fff; font-size: 10px; margin-left: 4px;">左</span>
+        </el-checkbox>
+        <el-checkbox v-if="isBoxHidden.jsonEditorRightBox" :value="!isBoxHidden.jsonEditorRightBox" @input="val => { isBoxHidden.jsonEditorRightBox = !val; hiddenBox(); }" style="margin-right: 10px; color: #8E44AD;" class="right-checkbox">
+          勾选展示<span style="display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background-color: #8E44AD; color: #fff; font-size: 10px; margin-left: 4px;">右</span>
+        </el-checkbox>
+        <el-checkbox v-if="isBoxHidden.aceEditorBox" :value="!isBoxHidden.aceEditorBox" @input="val => { isBoxHidden.aceEditorBox = !val; hiddenBox(); }" style="color: #E6A23C;" class="editor-checkbox">
+          勾选展示<span style="display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background-color: #E6A23C; color: #fff; font-size: 10px; margin-left: 4px;"><i class="el-icon-document" style="font-size: 10px;"></i></span>
+        </el-checkbox>
+      </div>
     </el-header>
     <el-main>
       <div id="leftSection" class="leftSection">
         <div id="jsonEditorLeftBox" ref="jsonEditorLeftBox" class="jsonEditorLeftBox">
           <div id="jsonMenu" class="editorMenu">
             <div class="editorMenuBtn" style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background-color: #409EFF; color: #fff; font-size: 11px; padding: 0;">左</div>
-            <el-button id="setModeCodeBtn" type="button" size="mini" class="modeActive editorMenuBtn"
-              @click="setModeCode" style="border: 1px solid white; margin-right: 0;">code</el-button>
-            <el-button id="setModeTreeBtn" type="button" size="mini" class="editorMenuBtn" @click="setModeTree"
-              style="border: 1px solid white; margin-left: 0;">tree</el-button>
-            <el-button v-if="jsonEditorLeftMode === 'code'" id="jsonFormatBtn" type="button" size="mini"
-              class="editorMenuBtn" @click="jsonFormat">格式化</el-button>
-            <el-button v-if="jsonEditorLeftMode === 'code'" id="jsonCompactBtn" type="button" size="mini"
-              class="editorMenuBtn" @click="jsonCompact">压缩</el-button>
+            <el-upload class="upload-demo" ref="upload" accept=".xlsx,.xlx,.json,.txt"
+              :show-file-list="false" :auto-upload="false" action="" :on-change="importFileJson">
+              <el-button slot="trigger" type="primary" size="mini" class="editorMenuBtn" style="background-color: #409EFF; border-color: #409EFF;">导入</el-button>
+            </el-upload>
+            <el-dropdown :hide-on-click="false" trigger="click">
+              <el-button type="primary" size="mini" class="editorMenuBtn" style="background-color: #409EFF; border-color: #409EFF;">导出</el-button>
+              <el-dropdown-menu slot="dropdown">
+                <el-dropdown-item><el-button @click="exportFile('left', 'txt')">txt</el-button></el-dropdown-item>
+                <el-dropdown-item><el-button @click="exportFile('left', 'json')">json</el-button></el-dropdown-item>
+                <el-dropdown-item><el-button @click="exportFile('left', 'xlsx')">xlsx</el-button></el-dropdown-item>
+              </el-dropdown-menu>
+            </el-dropdown>
+            <el-button type="primary" size="mini" class="modeActive editorMenuBtn setModeCodeBtn"
+              @click="setModeCode" style="background-color: #409EFF; border-color: #409EFF; margin-right: 0;">code</el-button>
+            <el-button type="primary" size="mini" class="editorMenuBtn setModeTreeBtn" @click="setModeTree"
+              style="background-color: #409EFF; border-color: #409EFF; margin-left: 0;">tree</el-button>
+            <el-button v-if="jsonEditorLeftMode === 'code'" type="primary" size="mini"
+              class="editorMenuBtn jsonFormatBtn" @click="jsonFormat" style="background-color: #409EFF; border-color: #409EFF;">格式化</el-button>
+            <el-button v-if="jsonEditorLeftMode === 'code'" type="primary" size="mini"
+              class="editorMenuBtn jsonCompactBtn" @click="jsonCompact" style="background-color: #409EFF; border-color: #409EFF;">压缩</el-button>
             <div v-if="jsonEditorLeftMode === 'code'"> |</div>
-            <el-button type="button" size="mini" class="editorMenuBtn" @click="toJsonAndCopy">转义并复制</el-button>
-            <el-button type="button" size="mini" class="editorMenuBtn" @click="toObjectAndCopy">反转义并复制</el-button>
+            <el-button type="primary" size="mini" class="editorMenuBtn" @click="toJsonAndCopy" style="background-color: #409EFF; border-color: #409EFF;">转义</el-button>
+            <el-button type="primary" size="mini" class="editorMenuBtn" @click="toObjectAndCopy" style="background-color: #409EFF; border-color: #409EFF;">反转义</el-button>
             <div> |</div>
-            <el-button id="foldAllBtn" type="button" size="mini" class="editorMenuBtn" @click="foldAll">收缩</el-button>
-            <el-button id="unfoldBtn" type="button" size="mini" class="editorMenuBtn" @click="unfold">展开</el-button>
+            <el-button type="primary" size="mini" class="editorMenuBtn foldAllBtn" @click="foldAll" style="background-color: #409EFF; border-color: #409EFF;">收缩</el-button>
+            <el-button type="primary" size="mini" class="editorMenuBtn unfoldBtn" @click="unfold" style="background-color: #409EFF; border-color: #409EFF;">展开</el-button>
             <div> |</div>
-            <el-button id="transJsonBtn" type="button" size="mini" class="editorMenuBtn"
-              @click="__openTransSortJsonBox">筛选</el-button>
+            <el-button type="primary" size="mini" class="editorMenuBtn transJsonBtn"
+              @click="__openTransSortJsonBox" style="background-color: #409EFF; border-color: #409EFF;">筛选</el-button>
             <div> |</div>
-            <el-button v-if="jsonEditorLeftMode==='code'" id="sortJsonByKeyBtn" type="button" size="mini"
-              class="editorMenuBtn" @click="__openTransSortJsonBox">排序</el-button>
+            <el-button v-if="jsonEditorLeftMode==='code'" type="primary" size="mini"
+              class="editorMenuBtn sortJsonByKeyBtn" @click="__openTransSortJsonBox" style="background-color: #409EFF; border-color: #409EFF;">排序</el-button>
+            <el-button v-if="jsonEditorLeftMode==='code'" type="primary" size="mini" class="editorMenuBtn" @click="toggleSortJsonByFieldKey" :title="sortFieldKeyDirection === 'asc' ? '按键升序排序' : '按键降序排序'" style="background-color: #409EFF; border-color: #409EFF;">
+              按键排序<i :class="sortFieldKeyDirection === 'asc' ? 'el-icon-arrow-up' : 'el-icon-arrow-down'"></i>
+            </el-button>
+            <div> |</div>
+            <el-dropdown :hide-on-click="false" trigger="click">
+              <el-button type="primary" size="mini" style="background-color: #409EFF; border-color: #409EFF;">json转换<i class="el-icon-arrow-down el-icon--right"></i></el-button>
+              <el-dropdown-menu slot="dropdown">
+                <el-dropdown-item><el-button type="primary" @click="jToY" size="mini" style="background-color: #409EFF; border-color: #409EFF;">json > yaml</el-button></el-dropdown-item>
+                <el-dropdown-item><el-button type="primary" @click="jToX" size="mini" style="background-color: #409EFF; border-color: #409EFF;">json > xml</el-button></el-dropdown-item>
+                <el-dropdown-item><el-button plain type="success" @click="jToP" size="mini">json > properties</el-button></el-dropdown-item>
+                <el-dropdown-item><el-button plain type="success" @click="jToH" size="mini">json > http query</el-button></el-dropdown-item>
+              </el-dropdown-menu>
+            </el-dropdown>
             <el-input v-if="jsonEditorLeftMode === 'tree'" placeholder="请输入搜索内容" size="mini"
               v-model="jsonLeftTreeSearchStr" @change="treeSearch('jsonEditorLeft')"
-              @keyup.enter.native="treeSearch('jsonEditorLeft')" style="width: 30%; margin-left: auto;">
+              @keyup.enter.native="treeSearch('jsonEditorLeft')" style="width: 30%;">
             </el-input>
+            <el-button type="text" size="mini" @click="isBoxHidden.leftSection = true; hiddenBox()" style="margin-left: auto; color: #409EFF;">
+              <i class="el-icon-close" style="font-size: 14px;"></i>
+            </el-button>
           </div>
           <div id="jsonEditorLeft" ref="jsonEditorLeft" class="jsonEditorLeft"></div>
         </div>
@@ -294,30 +254,58 @@
         <div id="jsonEditorRightBox" ref="jsonEditorRightBox" class="jsonEditorRightBox">
           <div id="jsonRightMenu" class="editorMenu">
             <div class="editorMenuBtn" style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background-color: #8E44AD; color: #fff; font-size: 11px; padding: 0;">右</div>
-            <el-button id="setModeCodeBtn" type="button" size="mini" class="modeActive editorMenuBtn"
-              @click="setModeCode" style="border: 1px solid white; margin-right: 0;">code</el-button>
-            <el-button id="setModeTreeBtn" type="button" size="mini" class="editorMenuBtn" @click="setModeTree"
-              style="border: 1px solid white; margin-left: 0;">tree</el-button>
-            <el-button v-if="jsonEditorRightMode === 'code'" id="jsonFormatBtn" type="button" size="mini"
-              class="editorMenuBtn" @click="jsonFormat">格式化</el-button>
-            <el-button v-if="jsonEditorRightMode === 'code'" id="jsonCompactBtn" type="button" size="mini"
-              class="editorMenuBtn" @click="jsonCompact">压缩</el-button>
+            <el-upload class="upload-demo" ref="upload" accept=".xlsx,.xlx,.json,.txt"
+              :show-file-list="false" :auto-upload="false" action="" :on-change="importFileJsonRight">
+              <el-button slot="trigger" type="primary" size="mini" class="editorMenuBtn" style="background-color: #8E44AD; border-color: #8E44AD;">导入</el-button>
+            </el-upload>
+            <el-dropdown :hide-on-click="false" trigger="click">
+              <el-button type="primary" size="mini" class="editorMenuBtn" style="background-color: #8E44AD; border-color: #8E44AD;">导出</el-button>
+              <el-dropdown-menu slot="dropdown">
+                <el-dropdown-item><el-button @click="exportFile('right', 'txt')">txt</el-button></el-dropdown-item>
+                <el-dropdown-item><el-button @click="exportFile('right', 'json')">json</el-button></el-dropdown-item>
+                <el-dropdown-item><el-button @click="exportFile('right', 'xlsx')">xlsx</el-button></el-dropdown-item>
+              </el-dropdown-menu>
+            </el-dropdown>
+            <el-button type="primary" size="mini" class="modeActive editorMenuBtn setModeCodeBtn"
+              @click="setModeCode" style="background-color: #8E44AD; border-color: #8E44AD; margin-right: 0;">code</el-button>
+            <el-button type="primary" size="mini" class="editorMenuBtn setModeTreeBtn" @click="setModeTree"
+              style="background-color: #8E44AD; border-color: #8E44AD; margin-left: 0;">tree</el-button>
+            <el-button v-if="jsonEditorRightMode === 'code'" type="primary" size="mini"
+              class="editorMenuBtn jsonFormatBtn" @click="jsonFormat" style="background-color: #8E44AD; border-color: #8E44AD;">格式化</el-button>
+            <el-button v-if="jsonEditorRightMode === 'code'" type="primary" size="mini"
+              class="editorMenuBtn jsonCompactBtn" @click="jsonCompact" style="background-color: #8E44AD; border-color: #8E44AD;">压缩</el-button>
             <div v-if="jsonEditorRightMode === 'code'"> |</div>
-            <el-button type="button" size="mini" class="editorMenuBtn" @click="toJsonAndCopy">转义并复制</el-button>
-            <el-button type="button" size="mini" class="editorMenuBtn" @click="toObjectAndCopy">反转义并复制</el-button>
+            <el-button type="primary" size="mini" class="editorMenuBtn" @click="toJsonAndCopy" style="background-color: #8E44AD; border-color: #8E44AD;">转义</el-button>
+            <el-button type="primary" size="mini" class="editorMenuBtn" @click="toObjectAndCopy" style="background-color: #8E44AD; border-color: #8E44AD;">反转义</el-button>
             <div> |</div>
-            <el-button id="foldAllBtn" type="button" size="mini" class="editorMenuBtn" @click="foldAll">收缩</el-button>
-            <el-button id="unfoldBtn" type="button" size="mini" class="editorMenuBtn" @click="unfold">展开</el-button>
+            <el-button type="primary" size="mini" class="editorMenuBtn foldAllBtn" @click="foldAll" style="background-color: #8E44AD; border-color: #8E44AD;">收缩</el-button>
+            <el-button type="primary" size="mini" class="editorMenuBtn unfoldBtn" @click="unfold" style="background-color: #8E44AD; border-color: #8E44AD;">展开</el-button>
             <div> |</div>
-            <el-button id="transJsonBtn" type="button" size="mini" class="editorMenuBtn"
-              @click="__openTransSortJsonBox">筛选</el-button>
+            <el-button type="primary" size="mini" class="editorMenuBtn transJsonBtn"
+              @click="__openTransSortJsonBox" style="background-color: #8E44AD; border-color: #8E44AD;">筛选</el-button>
             <div> |</div>
-            <el-button v-if="jsonEditorRightMode==='code'" id="sortJsonByKeyBtn" type="button" size="mini"
-              class="editorMenuBtn" @click="__openTransSortJsonBox">排序</el-button>
+            <el-button v-if="jsonEditorRightMode==='code'" type="primary" size="mini"
+              class="editorMenuBtn sortJsonByKeyBtn" @click="__openTransSortJsonBox" style="background-color: #8E44AD; border-color: #8E44AD;">排序</el-button>
+            <el-button v-if="jsonEditorRightMode==='code'" type="primary" size="mini" class="editorMenuBtn" @click="toggleSortJsonByFieldKey" :title="sortFieldKeyDirection === 'asc' ? '按键升序排序' : '按键降序排序'" style="background-color: #8E44AD; border-color: #8E44AD;">
+              按键排序<i :class="sortFieldKeyDirection === 'asc' ? 'el-icon-arrow-up' : 'el-icon-arrow-down'"></i>
+            </el-button>
+            <div> |</div>
+            <el-dropdown :hide-on-click="false" trigger="click">
+              <el-button type="primary" size="mini" style="background-color: #8E44AD; border-color: #8E44AD;">json转换<i class="el-icon-arrow-down el-icon--right"></i></el-button>
+              <el-dropdown-menu slot="dropdown">
+                <el-dropdown-item><el-button type="primary" @click="jToY" size="mini" style="background-color: #8E44AD; border-color: #8E44AD;">json > yaml</el-button></el-dropdown-item>
+                <el-dropdown-item><el-button type="primary" @click="jToX" size="mini" style="background-color: #8E44AD; border-color: #8E44AD;">json > xml</el-button></el-dropdown-item>
+                <el-dropdown-item><el-button plain type="success" @click="jToP" size="mini">json > properties</el-button></el-dropdown-item>
+                <el-dropdown-item><el-button plain type="success" @click="jToH" size="mini">json > http query</el-button></el-dropdown-item>
+              </el-dropdown-menu>
+            </el-dropdown>
             <el-input v-if="jsonEditorRightMode === 'tree'" placeholder="请输入搜索内容" size="mini"
               v-model="jsonRightTreeSearchStr" @change="treeSearch('jsonEditorRight')"
-              @keyup.enter.native="treeSearch('jsonEditorRight')" style="width: 30%; margin-left: auto;">
+              @keyup.enter.native="treeSearch('jsonEditorRight')" style="width: 30%;">
             </el-input>
+            <el-button type="text" size="mini" @click="isBoxHidden.jsonEditorRightBox = true; hiddenBox()" style="margin-left: auto; color: #8E44AD;">
+              <i class="el-icon-close" style="font-size: 14px;"></i>
+            </el-button>
           </div>
           <div id="jsonEditorRight" ref="jsonEditorRight" class="jsonEditorRight"></div>
         </div>
@@ -325,8 +313,9 @@
         <div class="drag-horizontal"></div>
         <div id="aceEditorBox" ref="aceEditorBox" class="aceEditorBox">
           <div id="aceEditorMenu" class="editorMenu">
+            <span style="display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background-color: #E6A23C; color: #fff; font-size: 10px; margin-right: 5px;"><i class="el-icon-document" style="font-size: 10px;"></i></span>
             <el-dropdown :hide-on-click="false" trigger="click">
-              <el-button type="button" size="mini" class="editorMenuBtn">
+              <el-button type="primary" size="mini" class="editorMenuBtn" style="background-color: #E6A23C; border-color: #E6A23C;">
                 {{ (aceModes.find(m => m.value === aceLanguage) || {}).label || '语言' }}<i class="el-icon-arrow-down el-icon--right"></i>
               </el-button>
               <el-dropdown-menu slot="dropdown">
@@ -335,24 +324,40 @@
                 </el-dropdown-item>
               </el-dropdown-menu>
             </el-dropdown>
-            <el-button id="beautifyBtn" type="button" size="mini" class="editorMenuBtn"
-              @click="beautifyContent">美化</el-button>
-            <div> |</div>
-            <el-button id="base64DecodeBtn" type="button" size="mini" class="editorMenuBtn"
-              @click="base64Decode">Base64解码</el-button>
-            <el-button id="urlDecodeBtn" type="button" size="mini" class="editorMenuBtn"
-              @click="urlDecode">URL解码</el-button>
-            <!-- <div v-if="transJsonEditorName">&nbsp;&nbsp;查询方式: {{jsonQueryMode}}-></div> -->
-            <!-- <el-button v-if="transJsonEditorName" id="jmesQueryOutputBtn" class="editorMenuBtn"
-              @click="getJsonByQuery('output')">执行输出</el-button>
-            <el-button v-if="transJsonEditorName" id="jmesQueryUpdateBtn" class="editorMenuBtn"
-              @click="getJsonByQuery('update')">执行覆盖</el-button>
-            <el-button v-if="jsonQueryMode==='jsonpath' && opName==='replaceJsonByJsonpath'" class="editorMenuBtn"
-              @click="replaceJsonByJsonpath('output')">替换输出</el-button>
-            <el-button v-if="jsonQueryMode==='jsonpath' && opName==='replaceJsonByJsonpath'" class="editorMenuBtn"
-              @click="replaceJsonByJsonpath('update')">替换覆盖</el-button> -->
-            <!-- <el-button v-if="jsonQueryMode === 'jmesPath' | jsonQueryMode === 'jq'" id="jmesQueryUpdateBtn"
-              class="editorMenuBtn">执行</el-button> -->
+            <el-button id="beautifyBtn" type="primary" size="mini" class="editorMenuBtn"
+              @click="beautifyContent" style="background-color: #E6A23C; border-color: #E6A23C;">美化</el-button>
+            <el-upload class="upload-demo" ref="upload"
+              accept=".xlsx,.xlx,.json,.txt,.yaml,.yml,.xml,.html,.js,.java,.py,.sql,.properties"
+              :show-file-list="false" :auto-upload="false" action="" :on-change="importFileAce">
+              <el-button slot="trigger" type="primary" size="mini" class="editorMenuBtn" style="background-color: #E6A23C; border-color: #E6A23C;">导入</el-button>
+            </el-upload>
+            <el-dropdown :hide-on-click="false" trigger="click">
+              <el-button type="primary" size="mini" class="editorMenuBtn" style="background-color: #E6A23C; border-color: #E6A23C;">导出</el-button>
+              <el-dropdown-menu slot="dropdown">
+                <el-dropdown-item><el-button @click="exportFile('ace', 'txt')">txt</el-button></el-dropdown-item>
+                <el-dropdown-item><el-button @click="exportFile('ace', 'json')">json</el-button></el-dropdown-item>
+                <el-dropdown-item><el-button @click="exportFile('ace', 'yaml')">yaml</el-button></el-dropdown-item>
+                <el-dropdown-item><el-button @click="exportFile('ace', 'xml')">xml</el-button></el-dropdown-item>
+                <el-dropdown-item><el-button @click="exportFile('ace', 'html')">html</el-button></el-dropdown-item>
+                <el-dropdown-item><el-button @click="exportFile('ace', 'js')">js</el-button></el-dropdown-item>
+                <el-dropdown-item><el-button @click="exportFile('ace', 'java')">java</el-button></el-dropdown-item>
+                <el-dropdown-item><el-button @click="exportFile('ace', 'py')">py</el-button></el-dropdown-item>
+                <el-dropdown-item><el-button @click="exportFile('ace', 'sql')">sql</el-button></el-dropdown-item>
+                <el-dropdown-item><el-button @click="exportFile('ace', 'properties')">properties</el-button></el-dropdown-item>
+              </el-dropdown-menu>
+            </el-dropdown>
+            <div v-if="aceLanguage === 'ace/mode/text'"> |</div>
+            <el-button v-if="aceLanguage === 'ace/mode/text'" id="base64DecodeBtn" type="primary" size="mini" class="editorMenuBtn"
+              @click="base64Decode" style="background-color: #E6A23C; border-color: #E6A23C;">Base64解码</el-button>
+            <el-button v-if="aceLanguage === 'ace/mode/text'" id="urlDecodeBtn" type="primary" size="mini" class="editorMenuBtn"
+              @click="urlDecode" style="background-color: #E6A23C; border-color: #E6A23C;">URL解码</el-button>
+            <el-button v-if="aceLanguage === 'ace/mode/yaml'" type="primary" size="mini" class="editorMenuBtn" @click="yToJ" style="background-color: #E6A23C; border-color: #E6A23C;">转json</el-button>
+            <el-button v-if="aceLanguage === 'ace/mode/xml'" type="primary" size="mini" class="editorMenuBtn" @click="xToJ" style="background-color: #E6A23C; border-color: #E6A23C;">转json</el-button>
+            <el-button v-if="aceLanguage === 'ace/mode/properties'" type="primary" size="mini" class="editorMenuBtn" @click="pToJ" style="background-color: #E6A23C; border-color: #E6A23C;">转json</el-button>
+            <el-button v-if="aceLanguage === 'ace/mode/text'" type="primary" size="mini" class="editorMenuBtn" @click="hToJ" style="background-color: #E6A23C; border-color: #E6A23C;">转json</el-button>
+            <el-button type="text" size="mini" @click="isBoxHidden.aceEditorBox = true; hiddenBox()" style="margin-left: auto; color: #E6A23C;">
+              <i class="el-icon-close" style="font-size: 14px;"></i>
+            </el-button>
           </div>
           <div id="aceEditor" class="aceEditor"></div>
         </div>
@@ -407,8 +412,8 @@
         jsonEditorRightDiffLineData: {},
         isAsyncScrollView: false,
         _autoDiffTimer: null,
-        jsonLeftStr: "{\"name\":\"Json 生成 J2025年7月24日22:45:32sonSchema\", \"imageUrl\":\"https://img0.baidu.com/it/u=113896009,2776238772&fm=253&fmt=auto&app=138&f=JPEG?w=750&h=500\", \"age\":2023,\"account_balance\":0.0601,\"cost\":231.00,\"isOnline\":false,\"salary\":null,\"emptyArray\":[],\"emptyObject\":{},\"address\":{\"htmlAndLatex\":\"<p>“电磁橇”做匀减速运动时<img src=\\\"https://img0.baidu.com/it/u=113896009,2776238772&fm=253&fmt=auto&app=138&f=JPEG?w=750&h=500\\\">的加速度大小<i>a</i><sub>2</sub>=<span class=\\\"qyx-latex\\\" data-name=\\\"math\\\">$$\\\\left|\\\\frac{v_{16}-v_{15}}{\\\\Delta t}\\\\right|$$</span>=<span class=\\\"qyx-latex\\\" data-name=\\\"math\\\">$$\\\\left|\\\\frac{45.6-74.8}{9.06-8.33}\\\\right|$$</span> m/s<sup>2</sup>=40 m/s<sup>2</sup><br>设“电磁橇”的最大速度为<i>v</i>，加速阶段有<i>v</i>=<i>v</i><subld\\\" attr-type=\\\"field\\\" attr-method=\\\"0\\\" attr-key=\\\"1911😊5978190👍97276419\\\" attr-🎈pre=\\\"\\\" attr-index=\\\"1\\\" attr-info=\\\"[第一个1] 选择\\\">（　　）</span></p>\",\"bigintString\":\"12345678901234567890123\",\"zip\":\"1.0.6\",\"bigint\":12345678901234567890123,\"fullWidth\":{\"1\":\"1Ⅱ3Ⅲ的Ⅺ是X否x★祥☆urcerectl〗如【⌚❌⏳✨】“”1234Հ56【空 格】2【x✅x】\",\"2\":\"△β壹亅æけむㅙㅊЮ╋╱۞😁1Й┰︼【全角　空格】①㎡∑‰öēㄇ靐龘だ\",\"3\":\"1V̇,,🚵‍♂️,,\"},\"phone\":[{\"type\":\"home\",\"num\":22.00},{\"type\":\"mobdsaaaaaaafdsssssssssssssssssssssss对我个人而言，随机一段废话不仅仅是一个重大的事件，还可能会改变我的人生. 我们不妨可以这样来想: 一般来说, 一般来说, 要想清楚, 随机一段废话, 到底是一种怎么样的存在. 我认为, 从这个角度来看, 笛卡儿在不经意间这样说过, 阅读一切好书如同和过去最杰出的人谈话。这不禁令我深思. ,ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss一般来说, 我们不得不面对一个非常尴尬的事实, 那就是, 随机一段废话的发生, 到底需要如何做到, 不x的发生ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss\\nsssssssssssssssssssssssssssssssssssssssssile\",\"num\":33.01},{\"type\":\"home\",\"num\":44},{\"type\":\"home\",\"num\":22.0001}]},\"phone\":[{\"type\":\"mobile\",\"num\":\"555-1234\"},{\"type\":\"home\",\"num\":55.00},[1.00,2.99,3,0.004],[\"1\",\"2.00\",3,4,{\"5\":5.00,\"6\":6.01},[7,8.00]]],\"type\":\"home\",\"num\":11}",
-        jsonRightStr: "{}",
+        jsonLeftStr: "",
+        jsonRightStr: "",
         jsonpathLeftMap: new Map(),
         jsonEditorLeftJsonpathLineDict: {},
         jsonpathRightMap: new Map(),
@@ -418,6 +423,8 @@
         jsonQueryStrList: [
           { "value": "" }
         ],
+        // 标记当前输入是否是自动生成的（点击字段填充），用于区分是否记录历史
+        isAutoFilledQuery: false,
         jsonLeftTreeSearchStr: "",
         jsonRightTreeSearchStr: "",
         aceEditor: undefined,
@@ -481,10 +488,9 @@
           jsonEditorRightBox: false,
           aceEditorBox: false
         },
-        aiModel: "",
-        aiModelOptions: [],
         isAiGenerating: false,
         isQueryExecuting: false,
+        isJustInsertedData: false,
         transOrSort: "",
         transJsonEditorName: "",
         transPaths: [],
@@ -514,6 +520,7 @@
           field: "",
           direction: "asc",
         },
+        sortFieldKeyDirection: "asc",
         bigintNode: {},
       }
     },
@@ -593,9 +600,43 @@
           }
         }
 
-        // ========== 默认 AI 模式 ==========
-        // 无法识别的语法，当作自然语言处理
-        return 'ai';
+        // ========== 默认 JSONPath 模式 ==========
+        // 无法识别的语法，默认使用 jsonpath（可能是自然语言，需要点击AI生成按钮）
+        return 'jsonpath';
+      },
+      // AI判断查询模式
+      async aiDetectQueryMode(queryStr) {
+        try {
+          const messages = [
+            {
+              role: 'system',
+              content: `你是一位JSON查询语法专家。请判断用户输入的查询表达式属于哪种语法类型。
+
+可选类型：
+- jsonpath：以$开头，如 $.data.items、$..name、$[0]
+- jq：以.开头或包含jq函数，如 .items、map(.name)、select(.age>18)
+- jmespath：以@开头或包含jmespath函数，如 @.items、[?age>\`18\`]
+- natural：自然语言描述，不是查询语法，如"提取所有name"、"随机保留2个"
+
+只输出类型名称，不要任何解释。`
+            },
+            {
+              role: 'user',
+              content: `判断以下输入的语法类型：\n${queryStr}\n\n只输出类型（jsonpath/jq/jmespath/natural）：`
+            }
+          ];
+
+          const result = await utools.ai({ messages });
+          const content = (result.content || result).trim().toLowerCase();
+
+          if (content.includes('jq')) return 'jq';
+          if (content.includes('jmespath')) return 'jmespath';
+          if (content.includes('natural')) return 'ai';
+          return 'jsonpath';
+        } catch (e) {
+          console.error('AI判断失败:', e);
+          return 'jsonpath'; // 默认返回jsonpath
+        }
       },
       // 关闭box
       __closeBox(boxName) {
@@ -603,7 +644,7 @@
         if (boxName === "transSortBox") {
           // 清空名字，好让 aceEditorMenu 的按钮进行判断
           this.transJsonEditorName = "";
-          this.isBoxHidden.aceEditorBox = true;
+          // 不隐藏编辑器面板，各个面板保持独立状态
         }
       },
       // format 格式化
@@ -624,7 +665,7 @@
       },
       // compact 压缩
       jsonCompact(editorOrEditorEl) {
-        editor = editorOrEditorEl;
+        let editor = editorOrEditorEl;
         // 判断是否是给的元素
         if (editorOrEditorEl.currentTarget) {
           if ($(event.currentTarget).parents("#leftSection").length >= 1) {
@@ -639,11 +680,36 @@
           editor.aceEditor.clearSelection();
         }
       },
+      // 设置查询字符串，可选择是否标记为自动生成
+      setJsonQueryStr(value, isAutoFilled = false) {
+        this.isAutoFilledQuery = isAutoFilled;
+        this.jsonQueryStr = value;
+      },
       querySearch(queryString, cb) {
         // 调用 callback 返回建议列表的数据
-        const a = this.jsonQueryStrList;
-        cb(a);
+        const results = queryString ? this.jsonQueryStrList.filter(item =>
+          item.value.toLowerCase().includes(queryString.toLowerCase())
+        ) : this.jsonQueryStrList;
+        cb(results);
       },
+      // 清空查询历史记录
+      clearQueryHistory() {
+        this.jsonQueryStrHistorys = [];
+        this.jsonQueryStrList = [{ "value": "" }];
+        this.$message.success('历史记录已清空');
+      },
+      // 删除单条历史记录
+      removeHistoryItem(value) {
+        const index = this.jsonQueryStrHistorys.indexOf(value);
+        if (index > -1) {
+          this.jsonQueryStrHistorys.splice(index, 1);
+        }
+        const listIndex = this.jsonQueryStrList.findIndex(item => item.value === value);
+        if (listIndex > -1) {
+          this.jsonQueryStrList.splice(listIndex, 1);
+        }
+      },
+
       // 初始化数据，从 utools.db 读取
       initUtoolsData() {
         if (typeof utools !== "undefined") {
@@ -656,52 +722,10 @@
             // 初始化这里，默认把排序隐藏了
             this.isBoxHidden.transSortBox = true;
           }
-          // 读取AI模型设置
-          if (utools.db.get("aiModel") && utools.db.get("aiModel").data) {
-            this.aiModel = utools.db.get("aiModel").data;
-          }
-          // 获取可用AI模型列表
-          this.loadAiModels();
         }
         this.hiddenBox();
       },
-      // 加载可用AI模型列表
-      async loadAiModels() {
-        if (typeof utools !== "undefined" && utools.allAiModels) {
-          try {
-            const models = await utools.allAiModels();
-            // 构建选项列表，第一个为默认选项
-            const options = [{ value: "", label: "默认" }];
-            if (models && Array.isArray(models)) {
-              models.forEach(model => {
-                options.push({
-                  value: model.id,
-                  label: model.label || model.id
-                });
-              });
-            }
-            this.aiModelOptions = options;
-          } catch (e) {
-            console.error("获取AI模型列表失败:", e);
-            // 如果获取失败，至少保留默认选项
-            this.aiModelOptions = [{ value: "", label: "默认" }];
-          }
-        } else {
-          // 如果不支持allAiModels，只显示默认选项
-          this.aiModelOptions = [{ value: "", label: "默认" }];
-        }
-      },
-      // 保存AI模型设置
-      saveAiModel() {
-        if (typeof utools !== "undefined") {
-          const data = { _id: "aiModel", data: this.aiModel };
-          const existing = utools.db.get("aiModel");
-          if (existing && existing._rev) {
-            data._rev = existing._rev;
-          }
-          utools.db.put(data);
-        }
-      },
+
       // 把 utools 输入框的数据放到 jsonEditorLeft 
       initJsonDataByUtoolsData() {
         if (typeof utools !== "undefined") {
@@ -736,34 +760,40 @@
 
         // 监控 选中的时候，获取 jsonpath/jq 路径
         options.onTextSelectionChange = function (row, col, text) {
-          // 如果正在执行查询，不修改 jsonEditorActive
-          if (vm.isQueryExecuting) {
+          // 如果正在执行查询或刚刚完成数据插入，不修改 jsonEditorActive
+          if (vm.isQueryExecuting || vm.isJustInsertedData) {
             return;
           }
           let path;
           if (el_id === "jsonEditorLeft") {
             vm.jsonEditorActive = '左';
+            // 清空 transJsonEditorName，让用户手动选择优先级高于筛选/排序按钮
+            vm.transJsonEditorName = "";
             path = getJsonpathByLine(vm.jsonEditorLeft, row.row);
           } else if (el_id === "jsonEditorRight") {
             vm.jsonEditorActive = '右';
+            // 清空 transJsonEditorName，让用户手动选择优先级高于筛选/排序按钮
+            vm.transJsonEditorName = "";
             path = getJsonpathByLine(vm.jsonEditorRight, row.row);
           }
-          // 根据当前模式转换路径格式
+          // 根据当前模式转换路径格式并填入输入框（标记为自动生成，不记录历史）
           if (path) {
+            let queryValue;
             if (vm.jsonQueryMode === "jq") {
               // jsonpath → jq
               if (path === "$") {
-                vm.jsonQueryStr = ".";
+                queryValue = ".";
               } else if (path.startsWith("$.")) {
-                vm.jsonQueryStr = path.substring(1);
+                queryValue = path.substring(1);
               } else if (path.startsWith("$[")) {
-                vm.jsonQueryStr = "." + path.substring(1);
+                queryValue = "." + path.substring(1);
               } else {
-                vm.jsonQueryStr = path;
+                queryValue = path;
               }
             } else {
-              vm.jsonQueryStr = path;
+              queryValue = path;
             }
+            vm.setJsonQueryStr(queryValue, true); // true 表示这是自动生成的
           }
         }
 
@@ -773,9 +803,11 @@
             this.jsonEditorRight = new JSONEditor(container, options);
           }
           this.jsonEditorRight.setName("jsonEditorRight");
-          aceEditorInsertData(this.jsonEditorRight.aceEditor, LosslessJSON.parse(this.jsonRightStr));
-          if (dataType(this.jsonEditorRight.get()) === "object" || dataType(this.jsonEditorRight.get()) === "array") {
-            [this.jsonpathRightMap, this.jsonEditorRightJsonpathLineDict] = buildPathMap(this.jsonEditorRight.get());
+          if (this.jsonRightStr && this.jsonRightStr.trim()) {
+            aceEditorInsertData(this.jsonEditorRight.aceEditor, LosslessJSON.parse(this.jsonRightStr));
+            if (dataType(this.jsonEditorRight.get()) === "object" || dataType(this.jsonEditorRight.get()) === "array") {
+              [this.jsonpathRightMap, this.jsonEditorRightJsonpathLineDict] = buildPathMap(this.jsonEditorRight.get());
+            }
           }
           this.__addEditorWatchEvent("jsonEditorRight");
         } else {
@@ -783,9 +815,11 @@
             this.jsonEditorLeft = new JSONEditor(container, options);
           }
           this.jsonEditorLeft.setName("jsonEditorLeft");
-          aceEditorInsertData(this.jsonEditorLeft.aceEditor, LosslessJSON.parse(this.jsonLeftStr));
-          if (dataType(this.jsonEditorLeft.get()) === "object" || dataType(this.jsonEditorLeft.get()) === "array") {
-            [this.jsonpathLeftMap, this.jsonEditorLeftJsonpathLineDict] = buildPathMap(this.jsonEditorLeft.get());
+          if (this.jsonLeftStr && this.jsonLeftStr.trim()) {
+            aceEditorInsertData(this.jsonEditorLeft.aceEditor, LosslessJSON.parse(this.jsonLeftStr));
+            if (dataType(this.jsonEditorLeft.get()) === "object" || dataType(this.jsonEditorLeft.get()) === "array") {
+              [this.jsonpathLeftMap, this.jsonEditorLeftJsonpathLineDict] = buildPathMap(this.jsonEditorLeft.get());
+            }
           }
           this.__addEditorWatchEvent("jsonEditorLeft");
         }
@@ -875,7 +909,7 @@
           }
           try {
             setTimeout(async () => {
-              const jsonStr = myJsonStringify(LosslessJSON.parse(editorObj.editor.getText()), null, 2);
+              const jsonStr = myJsonStringify(LosslessJSON.parse(editorObj.editor.getText()));
               // editorObj.editor.updateText(jsonStr);
               // aceEditorInsertData(editorObj.editor.aceEditor, jsonStr);
               // 更新jsonpathMap
@@ -938,7 +972,7 @@
           // 避免特殊字符被占用，所以选用 ▶ 这个作为 JSONpath 的 分隔符
           let pathStr = `${editorObj.editor.container.id}▶`
           pathStr = pathStr + path.join("▶");
-          if (dataType(value) === "object" & path.length > 0 & field !== "properties") {
+          if (dataType(value) === "object" && path.length > 0 && field !== "properties") {
             window.vm.$set(window.vm.jsonRightClassNameMap, pathStr, dataType(value))
           } else {
             window.vm.$set(window.vm.jsonRightClassNameMap, pathStr, false)
@@ -1204,16 +1238,16 @@
         if ($(event.currentTarget).parents("#leftSection").length >= 1) {
           let jsonData = LosslessJSON.parse(this.jsonEditorLeft.getText());
           if (jsonData && dataType(jsonData) === "string") {
-            this.jsonEditorLeft.setText(myJsonStringify(LosslessJSON.parse(jsonData), null, 2));
+            this.jsonEditorLeft.setText(myJsonStringify(LosslessJSON.parse(jsonData)));
           } else {
-            this.jsonEditorLeft.setText(myJsonStringify(jsonData, null, 2));
+            this.jsonEditorLeft.setText(myJsonStringify(jsonData));
           }
         } else {
           let jsonRightData = LosslessJSON.parse(this.jsonEditorRight.getText());
           if (jsonRightData && dataType(jsonRightData) === "string") {
-            this.jsonEditorRight.setText(myJsonStringify(LosslessJSON.parse(jsonRightData), null, 2));
+            this.jsonEditorRight.setText(myJsonStringify(LosslessJSON.parse(jsonRightData)));
           } else {
-            this.jsonEditorRight.setText(myJsonStringify(jsonRightData, null, 2));
+            this.jsonEditorRight.setText(myJsonStringify(jsonRightData));
           }
         }
       },
@@ -1272,9 +1306,9 @@
             }
             let jsonData = LosslessJSON.parse(text);
             if (jsonData && dataType(jsonData) === "string") {
-              result = myJsonStringify(LosslessJSON.parse(jsonData), null, 2);
+              result = myJsonStringify(LosslessJSON.parse(jsonData));
             } else {
-              result = myJsonStringify(jsonData, null, 2);
+              result = myJsonStringify(jsonData);
             }
             this.jsonEditorLeft.setText(result);
           } else {
@@ -1285,9 +1319,9 @@
             }
             let jsonRightData = LosslessJSON.parse(text);
             if (jsonRightData && dataType(jsonRightData) === "string") {
-              result = myJsonStringify(LosslessJSON.parse(jsonRightData), null, 2);
+              result = myJsonStringify(LosslessJSON.parse(jsonRightData));
             } else {
-              result = myJsonStringify(jsonRightData, null, 2);
+              result = myJsonStringify(jsonRightData);
             }
             this.jsonEditorRight.setText(result);
           }
@@ -1321,33 +1355,61 @@
           });
         }
       },
-      //根据jsonpath、jmespath、jq、AI获取数据
-      async getJsonByQuery(op) {
-        // 自动检测查询模式
-        const detectedMode = this.detectQueryMode(this.jsonQueryStr);
-        this.jsonQueryMode = detectedMode;
-
-        // 如果是 AI 模式，调用 AI 处理
-        if (this.jsonQueryMode === "ai") {
-          await this.handleAiDirectQuery();
+      // 统一处理查询提交（自动判断是执行表达式还是AI处理）
+      async handleQuerySubmit(op) {
+        if (!this.jsonQueryStr.trim()) {
           return;
         }
+
+        // 先简单判断
+        let detectedMode = this.detectQueryMode(this.jsonQueryStr);
+
+        // 如果明显是标准语法，直接执行
+        if (detectedMode !== 'jsonpath' || this.jsonQueryStr.trim().startsWith('$')) {
+          await this.getJsonByQuery(op);
+          return;
+        }
+
+        // 无法识别时，用AI判断
+        detectedMode = await this.aiDetectQueryMode(this.jsonQueryStr);
+
+        if (detectedMode === 'ai') {
+          // 自然语言，用AI处理
+          await this.aiProcessJson();
+        } else {
+          // 是查询语法，执行
+          this.jsonQueryMode = detectedMode;
+          await this.getJsonByQuery(op);
+        }
+      },
+
+      //根据jsonpath、jmespath、jq获取数据
+      async getJsonByQuery(op) {
         this.opName = "getJsonByQuery";
         // 设置查询执行标志，防止onTextSelectionChange修改jsonEditorActive
         this.isQueryExecuting = true;
-        // 保存当前的编辑器激活状态，防止输出后被修改
+        // 保存当前的编辑器激活状态和面板状态，防止输出后被修改
         const savedEditorActive = this.jsonEditorActive;
+        const savedTransJsonEditorName = this.transJsonEditorName;
         this.isBoxHidden.leftSection = false;
         this.isBoxHidden.jsonEditorRightBox = false;
         this.jsonEditorRight.setMode("code");
-        if (this.jsonQueryStrHistorys.indexOf(this.jsonQueryStr) == -1) {
+        // 只有非自动生成的用户输入才记录历史
+        if (!this.isAutoFilledQuery && this.jsonQueryStrHistorys.indexOf(this.jsonQueryStr) == -1) {
           this.jsonQueryStrHistorys.push(this.jsonQueryStr);
           this.jsonQueryStrList.unshift({ "value": this.jsonQueryStr });
         }
+        // 重置标记
+        this.isAutoFilledQuery = false;
         try {
           let jsonData;
-          // 判断数据源侧边（明确运算符优先级）
-          const isSourceRight = (this.transJsonEditorName && this.transJsonEditorName === "JSON右") || this.jsonEditorActive === "右";
+          // 判断数据源侧边：优先使用 transJsonEditorName（筛选/排序按钮指定），否则使用 jsonEditorActive
+          let isSourceRight;
+          if (this.transJsonEditorName) {
+            isSourceRight = this.transJsonEditorName === "JSON右";
+          } else {
+            isSourceRight = this.jsonEditorActive === "右";
+          }
           if (isSourceRight) {
             // jq 模式需要用普通 JSON.parse，避免 LosslessNumber 对象问题
             if (this.jsonQueryMode === "jq") {
@@ -1373,7 +1435,8 @@
               resJsonData = jpResult;
             }
           } else if (this.jsonQueryMode === "jmespath") {
-            if (this.transJsonEditorName && this.transJsonEditorName === "JSON右") {
+            // 使用 isSourceRight 判断数据源，保持一致性
+            if (isSourceRight) {
               jsonData = LosslessJSON.parse(this.jsonEditorRight.getText(), myLosslessJSONReviver);
             } else {
               jsonData = LosslessJSON.parse(this.jsonEditorLeft.getText(), myLosslessJSONReviver);
@@ -1400,33 +1463,43 @@
           const isJsonLike = finalResult !== null && finalResult !== undefined
             && typeof finalResult === 'object';
           const outputText = isJsonLike
-            ? myJsonStringify(finalResult, null, 2)
+            ? myJsonStringify(finalResult)
             : (finalResult === null ? 'null' : String(finalResult));
 
           // 统一输出逻辑（复用之前定义的 isSourceRight）
+          // 设置标志防止插入数据后触发 onTextSelectionChange 修改 jsonEditorActive
+          this.isJustInsertedData = true;
           if (isJsonLike) {
             // JSON 结果 → JSON面板（对面）
-            this.isBoxHidden.aceEditorBox = true;
+            // 不隐藏编辑器面板，保持用户之前的选择
             if (isSourceRight) {
               this.jsonEditorLeft.setMode("code");
-              this.jsonEditorLeft.updateText(outputText);
+              aceEditorInsertData(this.jsonEditorLeft.aceEditor, finalResult, true);
             } else {
               this.jsonEditorRight.setMode("code");
-              this.jsonEditorRight.updateText(outputText);
+              aceEditorInsertData(this.jsonEditorRight.aceEditor, finalResult, true);
             }
           } else {
             // 文本结果 → 编辑器面板
             this.isBoxHidden.aceEditorBox = false;
+            this.aceLanguage = "ace/mode/text";
             this.aceEditor.setValue(outputText);
+            // 不隐藏JSON面板，保持用户之前的选择
           }
-          // 恢复编辑器激活状态
+          // 恢复编辑器激活状态和面板状态
           this.jsonEditorActive = savedEditorActive;
+          this.transJsonEditorName = savedTransJsonEditorName;
+          // 延迟清除标志，确保 Ace 编辑器的 onChangeSelection 事件不会误触发
+          setTimeout(() => {
+            this.isJustInsertedData = false;
+          }, 200);
         } catch (error) {
-          // 恢复编辑器激活状态
+          // 恢复编辑器激活状态和面板状态
           this.jsonEditorActive = savedEditorActive;
+          this.transJsonEditorName = savedTransJsonEditorName;
           // 统一错误展示：编辑器面板
           this.isBoxHidden.aceEditorBox = false;
-          this.isBoxHidden.jsonEditorRightBox = true;
+          // 不隐藏JSON面板，保持用户之前的选择
           // 错误信息直接展示
           this.aceEditor.setValue(error.message);
         } finally {
@@ -1434,36 +1507,44 @@
           this.isQueryExecuting = false;
         }
       },
-      // AI直接处理JSON数据
-      async handleAiDirectQuery() {
+      // AI云端处理JSON数据（直接返回处理结果，不是生成表达式）
+      async aiProcessJson() {
         if (!this.jsonQueryStr.trim()) {
-          this.$message.warning('请输入AI处理指令');
+          this.$message.warning('请输入处理需求');
           return;
         }
-        
-        // 设置查询执行标志，防止onTextSelectionChange修改jsonEditorActive
+
+        // 设置查询执行标志
         this.isQueryExecuting = true;
-        // 保存当前的编辑器激活状态，防止输出后被修改
         const savedEditorActive = this.jsonEditorActive;
+        const savedTransJsonEditorName = this.transJsonEditorName;
         this.isAiGenerating = true;
-        
-        // 保存历史记录
-        if (this.jsonQueryStrHistorys.indexOf(this.jsonQueryStr) == -1) {
+        this.jsonQueryMode = 'ai';
+
+        // 保存历史记录（只有非自动生成的用户输入才记录）
+        if (!this.isAutoFilledQuery && this.jsonQueryStrHistorys.indexOf(this.jsonQueryStr) == -1) {
           this.jsonQueryStrHistorys.push(this.jsonQueryStr);
           this.jsonQueryStrList.unshift({ "value": this.jsonQueryStr });
         }
-        
+        // 重置标记
+        this.isAutoFilledQuery = false;
+
         try {
           // 获取当前JSON数据
           let jsonData;
-          // 判断数据源侧边（明确运算符优先级）
-          const isSourceRight = (this.transJsonEditorName && this.transJsonEditorName === "JSON右") || this.jsonEditorActive === "右";
+          // 判断数据源侧边：优先使用 transJsonEditorName（筛选/排序按钮指定），否则使用 jsonEditorActive
+          let isSourceRight;
+          if (this.transJsonEditorName) {
+            isSourceRight = this.transJsonEditorName === "JSON右";
+          } else {
+            isSourceRight = this.jsonEditorActive === "右";
+          }
           if (isSourceRight) {
             jsonData = this.jsonEditorRight.get();
           } else {
             jsonData = this.jsonEditorLeft.get();
           }
-          
+
           // 大数据量时提取骨架结构
           let jsonContent = JSON.stringify(jsonData);
           let skeleton = null;
@@ -1471,100 +1552,113 @@
             skeleton = this.extractJsonSkeleton(jsonData);
             jsonContent = JSON.stringify(skeleton);
           }
-          
-          // 构建messages
+
+          // 构建messages - 让AI直接处理数据并返回结果
           const messages = [
             {
               role: 'system',
-              content: `你是一位JSON查询专家。请根据用户的自然语言描述，生成对应的JSONPath、jq或JMESPath查询语法。
+              content: `你是一位JSON数据处理专家。请根据用户的自然语言描述，直接处理JSON数据并返回处理后的结果。
 
 【任务】
-分析JSON数据结构，理解用户的查询需求，生成最简洁高效的查询表达式。
+分析JSON数据结构，按照用户的要求处理数据，返回处理后的JSON结果。
 
 【输出规则】
-1. 只输出查询表达式本身，不要任何解释
-2. 优先使用JSONPath语法（以$开头）
-3. 如果jq语法更合适（复杂筛选、转换），使用jq语法（以.开头）
-4. 如果需要复杂的多步骤管道操作（筛选+排序+投影），使用JMESPath语法（以@开头）
-5. 输出必须是单行，不要换行，不要markdown代码块
-6. 不要输出任何说明文字
+1. 必须直接输出处理后的JSON数据，不要输出任何解释文字
+2. 输出必须是合法的JSON格式
+3. 如果结果是数组，输出JSON数组
+4. 如果结果是对象，输出JSON对象
+5. 如果结果是基本类型（字符串、数字等），直接输出该值
+6. 不要输出markdown代码块标记，只输出纯JSON
+7. 不要输出任何说明文字或分析过程
+
+【处理能力】
+你可以执行任何数据处理操作，包括但不限于：
+- 筛选、排序、分组、去重
+- 字段提取、重命名、删除
+- 数学计算、字符串处理
+- 随机抽取、抽样
+- 复杂的数据转换
 
 【示例】
-用户：提取所有name字段
-输出：$.[*].name
+输入: [1,2,3,4]
+需求: 随机保留2个
+输出: [1,3]（或其他任意2个随机元素）
 
-用户：筛选age大于18的数据
-输出：map(select(.age > 18))
-
-用户：获取第一个元素
-输出：$[0]
-
-用户：筛选age大于18并按name排序
-输出：@[?age > \`18\`] | sort_by(@, &name)
-
-用户：提取前3个元素的name和age
-输出：@[0:3].{name: name, age: age}`,
+输入: {"users":[{"name":"Alice","age":30},{"name":"Bob","age":25}]}
+需求: 提取所有name
+输出: ["Alice","Bob"]`
             },
             {
               role: 'user',
-              content: (skeleton ? '【注意：由于数据量较大，以下是JSON的骨架结构】\n\n' : '') + 'JSON数据：\n```json\n' + jsonContent + '\n```\n\n查询需求：' + this.jsonQueryStr + '\n\n请直接输出查询表达式（单行，无解释）：'}
+              content: (skeleton ? '【注意：由于数据量较大，以下是JSON的骨架结构】\n\n' : '') + 'JSON数据：\n' + jsonContent + '\n\n处理需求：' + this.jsonQueryStr + '\n\n请直接输出处理后的JSON结果（不要任何解释）：'}
           ];
 
           // 调用AI
           const aiOptions = { messages: messages };
-          if (this.aiModel) {
-            aiOptions.model = this.aiModel;
-          }
-          
           const result = await utools.ai(aiOptions);
-          
+
           // 解析AI返回的内容
           const content = result.content || result;
-          const codeBlockMatch = content.match(/```json\s*([\s\S]*?)```/);
-          const jsonStr = codeBlockMatch ? codeBlockMatch[1].trim() : content.trim();
-          
-          // AI返回的是查询表达式（纯文本），不是JSON
-          const queryExpr = content.trim();
-          
-          // 将AI生成的表达式填入输入框
-          this.jsonQueryStr = queryExpr;
-          
-          // 判断是jsonpath、jq还是jmespath，自动执行
-          if (queryExpr.startsWith('$')) {
-            // JSONPath语法
-            this.jsonQueryMode = 'jsonpath';
-            this.$nextTick(() => {
-              this.getJsonByQuery('output');
-              this.jsonQueryMode = 'ai'; // 恢复AI模式
-            });
-          } else if (queryExpr.startsWith('.') || /^\w+\s*\(|map\(|select\(|keys\(|values\(|group_by\(|unique\(|sort_by\(/.test(queryExpr)) {
-            // jq语法
-            this.jsonQueryMode = 'jq';
-            this.$nextTick(() => {
-              this.getJsonByQuery('output');
-              this.jsonQueryMode = 'ai'; // 恢复AI模式
-            });
-          } else if (queryExpr.startsWith('@') || /^\s*[\w\[]+\[\?/.test(queryExpr) || /^\s*\[\*\]/.test(queryExpr) || /\|\s*(sort_by|filter|join|contains|starts_with|ends_with|length|keys|values)\s*\(/.test(queryExpr)) {
-            // jmespath语法
-            this.jsonQueryMode = 'jmespath';
-            this.$nextTick(() => {
-              this.getJsonByQuery('output');
-              this.jsonQueryMode = 'ai'; // 恢复AI模式
-            });
-          } else {
-            // 无法识别，直接显示在编辑器
-            this.isBoxHidden.aceEditorBox = false;
-            this.aceEditor.setValue(`[AI 生成的表达式]\n================\n${queryExpr}\n\n无法识别为jsonpath、jq或jmespath语法`);
+          let processedData;
+
+          try {
+            // 尝试解析为JSON
+            processedData = JSON.parse(content.trim());
+          } catch (e) {
+            // 如果不是合法JSON，尝试提取JSON部分
+            const jsonMatch = content.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+            if (jsonMatch) {
+              processedData = JSON.parse(jsonMatch[0]);
+            } else {
+              throw new Error('AI返回的结果不是有效的JSON格式');
+            }
           }
+
+          // 设置标志防止插入数据后触发 onTextSelectionChange 修改 jsonEditorActive
+          this.isJustInsertedData = true;
+
+          // 根据结果类型决定显示位置
+          // 数据源是右面板，结果显示在左面板；数据源是左面板，结果显示在右面板
+          const resultType = typeof processedData;
+          if (resultType === 'object' && processedData !== null) {
+            // 对象或数组，显示在JSON面板
+            this.isBoxHidden.leftSection = false;
+            if (isSourceRight) {
+              // 数据源是右面板，结果显示在左面板
+              this.isBoxHidden.jsonEditorLeftBox = false;
+              this.jsonEditorLeft.setMode("code");
+              this.jsonEditorLeft.set(processedData);
+            } else {
+              // 数据源是左面板，结果显示在右面板
+              this.isBoxHidden.jsonEditorRightBox = false;
+              this.jsonEditorRight.setMode("code");
+              this.jsonEditorRight.set(processedData);
+            }
+          } else {
+            // 字符串、数字、布尔值等基本类型，显示在编辑器面板
+            // 基本类型不左右对调，统一显示在编辑器面板
+            this.isBoxHidden.leftSection = false;
+            this.isBoxHidden.aceEditorBox = false;
+            this.aceEditor.setValue(String(processedData));
+          }
+
+          // 恢复编辑器激活状态和面板状态
+          this.jsonEditorActive = savedEditorActive;
+          this.transJsonEditorName = savedTransJsonEditorName;
+          // 延迟清除标志，确保 Ace 编辑器的 onChangeSelection 事件不会误触发
+          setTimeout(() => {
+            this.isJustInsertedData = false;
+          }, 200);
+
+          this.$message.success('AI处理完成');
+
         } catch (error) {
           console.error('AI处理错误:', error);
-          // 将错误信息展示在编辑器面板
-          this.isBoxHidden.aceEditorBox = false;
-          const errorInfo = `AI处理失败\n================\n错误信息: ${error.message}\n\n时间: ${new Date().toLocaleString()}\n\n请检查:\n1. 网络连接是否正常\n2. AI服务是否可用\n3. 输入的JSON数据是否有效`;
-          this.aceEditor.setValue(errorInfo);
-        } finally {
-          // 恢复编辑器激活状态
+          this.$message.error('AI处理失败: ' + error.message);
+          // 恢复编辑器激活状态和面板状态
           this.jsonEditorActive = savedEditorActive;
+          this.transJsonEditorName = savedTransJsonEditorName;
+        } finally {
           // 清除查询执行标志
           this.isQueryExecuting = false;
           this.isAiGenerating = false;
@@ -1736,11 +1830,11 @@
             }
           }
           // 如果AceEditor隐藏，jsonRight不隐藏，铺满
-          if (this.isBoxHidden.aceEditorBox & !this.isBoxHidden.jsonEditorRightBox) {
+          if (this.isBoxHidden.aceEditorBox && !this.isBoxHidden.jsonEditorRightBox) {
             $("#jsonEditorRightBox").attr({ style: "height: 100%;" })
           }
           // 如果jsonRight隐藏，AceEditor不隐藏，铺满
-          if (!this.isBoxHidden.aceEditorBox & this.isBoxHidden.jsonEditorRightBox) {
+          if (!this.isBoxHidden.aceEditorBox && this.isBoxHidden.jsonEditorRightBox) {
             $("#aceEditorBox").attr({ style: "height: 100%;" })
           }
           // 如果排序和转换隐藏，就把 jsonEidor 铺满
@@ -1904,12 +1998,12 @@
           this.queryOptions.path.field = "";
           if ($(event.currentTarget).parents("#leftSection").length >= 1) {
             this.transJsonEditorName = "JSON左";
-            this.jsonEditorActive = "左";
+            // 不修改 jsonEditorActive，保持用户手动选择的状态
             this.transPaths = await this.__getTransJsonpaths(this.jsonpathLeftMap, false);
             await this.__updateTransJsonpaths(this.jsonEditorLeft.get(), realQueryOptions);
           } else if ($(event.currentTarget).parents("#rightSection").length >= 1) {
             this.transJsonEditorName = "JSON右";
-            this.jsonEditorActive = "右";
+            // 不修改 jsonEditorActive，保持用户手动选择的状态
             this.transPaths = await this.__getTransJsonpaths(this.jsonpathRightMap, false);
             await this.__updateTransJsonpaths(this.jsonEditorRight.get(), realQueryOptions);
           }
@@ -1919,7 +2013,7 @@
           let jsonData;
           if ($(event.currentTarget).parents("#leftSection").length >= 1) {
             this.transJsonEditorName = "JSON左";
-            this.jsonEditorActive = "左";
+            // 不修改 jsonEditorActive，保持用户手动选择的状态
             jsonData = this.jsonEditorLeft.get();
             for (const [lineNum, jsonpath] of this.jsonpathLeftMap) {
               // 使用安全函数替代 eval()
@@ -1932,7 +2026,7 @@
             }
           } else if ($(event.currentTarget).parents("#rightSection").length >= 1) {
             this.transJsonEditorName = "JSON右";
-            this.jsonEditorActive = "右";
+            // 不修改 jsonEditorActive，保持用户手动选择的状态
             jsonData = this.jsonEditorRight.get();
             for (const [lineNum, jsonpath] of this.jsonpathRightMap) {
               // 使用安全函数替代 eval()
@@ -1970,26 +2064,32 @@
           jmespath = this.jsonEditorRight.options.createQuery(this.jsonEditorRight.get(), queryOptionsNew);
         }
         // 把无条件的过滤清除
-        jmespath = jmespath.replaceAll(/(?<=\[\? .*?) (|==|!=|<|<=|>|>=) \`""\`(?=\])/g, "");
+        jmespath = jmespath.replaceAll(/\[\?\s*@\.[^\]]*\s*(==|!=|<|<=|>|>=)\s*""\s*\?\s*\]/g, "");
         // 把这种语法错误修正：[*].[0].linePrice
         jmespath = jmespath.replaceAll(/\.(\[\d+\]?)/g, "$1");
+        // 修复 sort 降序语法错误：sort_by(@, &field)[::-1] -> sort_by(@, &field) | reverse(@)
+        jmespath = jmespath.replace(/sort_by\(([^,]+),\s*&([^)]+)\)\s*\[::-1\]/g, "sort_by($1, &$2) | reverse($1)");
         if (jmespath.length > 0 && jmespath !== "@") {
           queryStrs.push(jmespath);
         }
         // this.aceEditor.setValue(queryStrs);
         // 组合查询语句
-        if (Object.keys(queryOptions) === 0) {
+        if (Object.keys(queryOptions).length === 0) {
           this.jsonQueryStr = "@";
           // 如果只有一个path，就不用管 filter、sort、projection
         } else if (Object.keys(queryOptions).length === 1 && queryOptions.path) {
           if (queryOptions.path.field.length === 0) {
             this.jsonQueryStr = "@";
           } else {
-            this.jsonQueryStr = queryOptions.path.field;
+            // 确保 path 以 @ 开头，避免 JMESPath 解析错误
+            const pathField = queryOptions.path.field;
+            this.jsonQueryStr = pathField.startsWith('@') ? pathField : '@.' + pathField;
           }
         } else {
           this.jsonQueryStr = queryStrs.join(" | ");
         }
+        // 标记为自动填充的查询，避免记录历史
+        this.isAutoFilledQuery = true;
         this.getJsonByQuery();
       },
       // 按key对json排序
@@ -2019,7 +2119,7 @@
             }
           })
         }
-        jsonEditor.updateText(myJsonStringify(jsonData, null, 2));
+        jsonEditor.updateText(myJsonStringify(jsonData));
       },
       __sortJson(jsonData, jsonPath, direction) {
         let newJsonData = LosslessJSON.parse(LosslessJSON.stringify(jsonData));
@@ -2050,6 +2150,55 @@
           safeSet(newJsonData, pathStr, sortedObjDesc);
         }
         return newJsonData;
+      },
+      // 切换按键排序方向并执行排序
+      toggleSortJsonByFieldKey() {
+        // 切换方向
+        this.sortFieldKeyDirection = this.sortFieldKeyDirection === 'asc' ? 'desc' : 'asc';
+        // 执行排序
+        this.sortJsonByFieldKey(this.sortFieldKeyDirection);
+      },
+      // 按字段Key（属性名）字母顺序排序
+      sortJsonByFieldKey(direction = 'asc') {
+        let jsonData;
+        let jsonEditor;
+        // 判断当前激活的编辑器
+        if (this.jsonEditorActive === "右") {
+          jsonEditor = this.jsonEditorRight;
+          jsonData = LosslessJSON.parse(this.jsonEditorRight.getText(), myLosslessJSONReviver);
+        } else {
+          jsonEditor = this.jsonEditorLeft;
+          jsonData = LosslessJSON.parse(this.jsonEditorLeft.getText(), myLosslessJSONReviver);
+        }
+        // 如果没有获取到编辑器或数据，直接返回
+        if (!jsonEditor || !jsonData) {
+          return;
+        }
+        // 递归排序对象的所有key
+        const sortedData = this.__sortJsonByKeys(jsonData, direction);
+        jsonEditor.updateText(myJsonStringify(sortedData));
+      },
+      // 递归按key排序的辅助函数
+      __sortJsonByKeys(data, direction = 'asc') {
+        if (Array.isArray(data)) {
+          // 数组：递归处理每个元素
+          return data.map(item => this.__sortJsonByKeys(item, direction));
+        } else if (data !== null && typeof data === 'object') {
+          // 对象：按key排序
+          let sortedKeys;
+          if (direction === 'asc') {
+            sortedKeys = Object.keys(data).sort((a, b) => a.localeCompare(b));
+          } else {
+            sortedKeys = Object.keys(data).sort((a, b) => b.localeCompare(a));
+          }
+          const sortedObj = {};
+          sortedKeys.forEach(key => {
+            sortedObj[key] = this.__sortJsonByKeys(data[key], direction);
+          });
+          return sortedObj;
+        }
+        // 基本类型直接返回
+        return data;
       },
       // json 2 yaml
       jToY() {
@@ -2200,9 +2349,9 @@
         try {
           let queryStr = this.aceEditor.getValue();
           let pairArray = queryStr.split("&");
-          const jsonData = decodeURIComponent(myJsonStringify(propertiesToJson(pairArray), null, 2));
+          const jsonData = decodeURIComponent(myJsonStringify(propertiesToJson(pairArray)));
           // const jsonData = this.propertiesToJson(pairArray);
-          this.jsonEditorLeft.setText(jsonData);
+          this.setJsonEditorText(this.jsonEditorLeft, jsonData);
         } catch (error) {
           this.jsonEditorLeft.set(error.message);
           throw error;
@@ -2250,7 +2399,7 @@
         this.isBoxHidden.leftSection = false;
         this.isBoxHidden.transSortBox = true;
         this.isBoxHidden.jsonEditorRightBox = false;
-        this.isBoxHidden.aceEditorBox = true;
+        this.isBoxHidden.aceEditorBox = true; // JSON对比模式下隐藏编辑器面板
         // 0.先把以前的数据重置了
         let jsonEditorLeftDiffData = {};
         let jsonEditorLeftDiffLineData = {};
@@ -3065,14 +3214,20 @@
         }
         this.$message.success(`导出成功: ${exportFilePath}`);
       },
+      // 设置 JSON 编辑器内容并自动格式化
+      setJsonEditorText(editor, text) {
+        editor.setText(text);
+        this.jsonFormat(editor);
+      },
+
       async importFileJson(file) {
         const data = await this.__importFile(file);
-        this.jsonEditorLeft.setText(data);
+        this.setJsonEditorText(this.jsonEditorLeft, data);
       },
 
       async importFileJsonRight(file) {
         const data = await this.__importFile(file);
-        this.jsonEditorRight.setText(data);
+        this.setJsonEditorText(this.jsonEditorRight, data);
       },
 
       async importFileAce(file) {
@@ -3217,7 +3372,6 @@
             this.jsonQueryMode = this.detectQueryMode(newVal);
           }
         },
-        immediate: true,
       },
       opName: {
         handler: function (newVal, oldVal) {
@@ -3271,9 +3425,9 @@
           setTimeout(() => {
             $("#jsonEditorLeftBox .modeActive").removeClass("modeActive");
             if (newVal === "tree") {
-              $("#jsonEditorLeftBox #setModeTreeBtn").addClass("modeActive");
+              $("#jsonEditorLeftBox .setModeTreeBtn").addClass("modeActive");
             } else {
-              $("#jsonEditorLeftBox #setModeCodeBtn").addClass("modeActive");
+              $("#jsonEditorLeftBox .setModeCodeBtn").addClass("modeActive");
             }
           }, 100);
         }
@@ -3283,9 +3437,9 @@
           setTimeout(() => {
             $("#jsonEditorRightBox .modeActive").removeClass("modeActive");
             if (newVal === "tree") {
-              $("#jsonEditorRightBox #setModeTreeBtn").addClass("modeActive");
+              $("#jsonEditorRightBox .setModeTreeBtn").addClass("modeActive");
             } else {
-              $("#jsonEditorRightBox #setModeCodeBtn").addClass("modeActive");
+              $("#jsonEditorRightBox .setModeCodeBtn").addClass("modeActive");
             }
           }, 100);
         }

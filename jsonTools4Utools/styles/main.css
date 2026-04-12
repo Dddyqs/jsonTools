@@ -35,7 +35,7 @@ body {
   margin-left: 20px !important;
   margin-right: 20px !important;
   display: flex !important;
-  justify-content: center !important;
+  justify-content: flex-start !important;
   align-items: center !important;
   padding: 4px 5px !important;
   gap: 8px !important;
@@ -250,13 +250,7 @@ body {
 
 /* ==================== 字体设置 ==================== */
 
-/* 设置字体，消除特殊字符光标错位 */
-* {
-  font-family: 'JetBrains Mono', 'Consolas', 'Monaco', 'Menlo', 'Ubuntu Mono', monospace !important;
-  word-break: break-all !important;
-  overflow-wrap: break-word !important;
-  line-break: strict !important;
-}
+/* 设置字体，消除特殊字符光标错位 - 已在全局 * 选择器中定义 */
 
 /* ==================== Tree 模式样式 ==================== */
 
