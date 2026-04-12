@@ -400,7 +400,6 @@
         jsonEditorRightMode: "code",
         jsonRightClassNameMap: {},
         jsonRightClassNameMapStr: "",
-        jsonRightTreeSelectedArray: [],
         jsonEditorActive: "左",
         jsonQueryMode: "jsonpath",
         jsonDiffCount: undefined,
@@ -521,7 +520,6 @@
           direction: "asc",
         },
         sortFieldKeyDirection: "asc",
-        bigintNode: {},
       }
     },
     methods: {
@@ -1009,13 +1007,6 @@
           if (path.length !== 0) {
             jsonpathStr = jsonpathStr + window.jsonpath.stringify(path).slice(1);
           }
-          const res = JSONPath.JSONPath(jsonpathStr, jsonData);
-          if (res && res.length > 0 && dataType(res[0]) === "error" && res[0].isLosslessNumber) {
-            if (res[0].value.length > 16 | (/\.0{1,}$/).test(res[0])) {
-              const value = myJsonStringify(res[0]);
-              vm.bigintNode[onNodeName] = value;
-            }
-          }
           return true;
         }
 
@@ -1125,7 +1116,6 @@
           function stopDrag() {
             document.removeEventListener('mousemove', doDrag);
             document.removeEventListener('mouseup', stopDrag);
-            // // 重新渲染一下，避免出现UI问题
             if (vm.jsonEditorLeft.aceEditor) {
               vm.jsonEditorLeft.aceEditor.resize();
             }
@@ -1873,7 +1863,6 @@
       },
       // 展开JSON
       unfold(event) {
-        // this.opName = "unfold";
         if ($(event.currentTarget).parents("#leftSection").length >= 1) {
           if (this.jsonEditorLeft.getMode() === "code") {
             this.jsonEditorLeft.aceEditor.session.unfold();
@@ -1965,7 +1954,6 @@
           // 空结果就不更新了
           if (jmepsRes && jmepsRes.length > 0) {
             const [jsonpathMap, jsonpathLineDict] = buildPathMap(jmepsRes);
-            // this.transPaths = await this.__getTransJsonpaths(jsonpathMap, false);
             transJsonpaths = await this.__getTransJsonpaths(jsonpathMap, true);
             if (dataType(jmepsRes) !== "array") {
               transJsonpaths = [];
@@ -1989,7 +1977,6 @@
       },
       // 打开筛选或排序
       async __openTransSortJsonBox(event) {
-        // this.opName = "transJson";
         if (event.currentTarget.innerText === "筛选") {
           this.jsonQueryMode = "jmespath";
           this.transOrSort = 'trans';
@@ -2042,7 +2029,6 @@
         this.isBoxHidden.leftSection = false;
         this.isBoxHidden.transSortBox = false;
         this.isBoxHidden.jsonEditorRightBox = false;
-        // this.isBoxHidden.aceEditorBox = false;
       },
       // 排序和转换
       transJson() {
@@ -2072,7 +2058,6 @@
         if (jmespath.length > 0 && jmespath !== "@") {
           queryStrs.push(jmespath);
         }
-        // this.aceEditor.setValue(queryStrs);
         // 组合查询语句
         if (Object.keys(queryOptions).length === 0) {
           this.jsonQueryStr = "@";
@@ -2350,7 +2335,6 @@
           let queryStr = this.aceEditor.getValue();
           let pairArray = queryStr.split("&");
           const jsonData = decodeURIComponent(myJsonStringify(propertiesToJson(pairArray)));
-          // const jsonData = this.propertiesToJson(pairArray);
           this.setJsonEditorText(this.jsonEditorLeft, jsonData);
         } catch (error) {
           this.jsonEditorLeft.set(error.message);
@@ -2394,8 +2378,6 @@
         this.jsonFormat(this.jsonEditorRight);
         const jsonEditorLeftData = LosslessJSON.parse(this.jsonEditorLeft.getText());
         const jsonEditorRightData = LosslessJSON.parse(this.jsonEditorRight.getText());
-        // [this.jsonpathLeftMap, this.jsonEditorLeftJsonpathLineDict] = buildPathMap(this.jsonEditorLeft.get());
-        // [this.jsonpathRightMap, this.jsonEditorRightJsonpathLineDict] = buildPathMap(this.jsonEditorRight.get());
         this.isBoxHidden.leftSection = false;
         this.isBoxHidden.transSortBox = true;
         this.isBoxHidden.jsonEditorRightBox = false;
@@ -2412,7 +2394,6 @@
         this.jsonDiffPatchList = jsonDiffPatchList;
         const jsonpathLineDictLeftKeys = Object.keys(this.jsonEditorLeftJsonpathLineDict);
         const jsonpathLineDictRightKeys = Object.keys(this.jsonEditorRightJsonpathLineDict);
-        // 2.遍历差异数据，拼接 html 字符串
         // 2.遍历差异数据，拼接 html 字符串
         jsonDiffPatchList.forEach(oneDiffPatch => {
           let jsonEditorLeftOneDiffData = {
@@ -2794,7 +2775,6 @@
           return newTextList;
         }
 
-        // // 开始拼接
         let minus = 0;
         let diffLineLengthCount = 0;
         let copyDiffListIndex = 0;
@@ -3042,7 +3022,6 @@
 
       // 同步滚动
       __syncScroll(editor) {
-        // if (this.isAsyncScrollView && this.opName === "jsonDiff") {
         if (this.isAsyncScrollView) {
           // 1.获取当前行列表
           const jsonLines = this.__getEditorLines(this.jsonEditorLeft);
@@ -3131,7 +3110,6 @@
           }
           if (keys1.indexOf(lineNum) !== -1) {
             this.jsonEditorLeft.aceEditor.scrollToLine(lineNum);
-            this.json
           } else {
             this.jsonEditorRight.aceEditor.scrollToLine(lineNum);
           }
@@ -3295,11 +3273,7 @@
       },
       // 内容美化
       beautifyContent() {
-        // this.opName = "beautifyContent";
-        const editorContent = this.aceEditor.getValue();
-        // const beautify = ace.require("./assets/ace/ext-beautify");
-        const beautifiedContent = beautify.beautify(this.aceEditor.session);
-        // this.aceEditor.setValue(beautifiedContent);
+        beautify.beautify(this.aceEditor.session);
       },
       // Base64 解码
       base64Decode() {
@@ -3342,7 +3316,6 @@
           },
           sort: {
             field: "",
-            // buy: "value",
             direction: "desc",
           },
           projection: {
