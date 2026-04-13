@@ -389,6 +389,17 @@
   const beautify = ace.require("ace/ext/beautify");
   ace.require("ace/ext/language_tools");
   ace.require("ace/ext/searchbox");
+
+  // HTML 转义函数，防止 XSS
+  function escapeHtml(str) {
+    if (typeof str !== 'string') return str;
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
   var vm = new Vue({
     el: '#app',
     data() {
@@ -650,7 +661,7 @@
         let editor = editorOrEditorEl;
         // 判断是否是给的元素
         if (editorOrEditorEl.currentTarget) {
-          if ($(event.currentTarget).parents("#leftSection").length >= 1) {
+          if ($(editorOrEditorEl.currentTarget).parents("#leftSection").length >= 1) {
             editor = this.jsonEditorLeft;
           } else {
             editor = this.jsonEditorRight;
@@ -666,7 +677,7 @@
         let editor = editorOrEditorEl;
         // 判断是否是给的元素
         if (editorOrEditorEl.currentTarget) {
-          if ($(event.currentTarget).parents("#leftSection").length >= 1) {
+          if ($(editorOrEditorEl.currentTarget).parents("#leftSection").length >= 1) {
             editor = this.jsonEditorLeft;
           } else {
             editor = this.jsonEditorRight;
@@ -882,7 +893,7 @@
               }
             }, 80);
           } catch (error) {
-            throw error;
+            console.error('paste 处理失败:', error);
           }
         });
 
@@ -939,7 +950,7 @@
               }
             }, 90);
           } catch (error) {
-            throw error;
+            console.error('change 处理失败:', error);
           }
         });
         let scrollTimer = null;
@@ -1000,12 +1011,14 @@
             onNodeName = "jsonEditorRight▶" + path.join("▶");
           }
           let jsonpathStr;
-          if (typeof path[0] === "number") {
-            jsonpathStr = `$[${path[0]}]`;
-            path.shift();
+          // 使用切片拷贝，避免破坏性修改原始 path 引用
+          let processedPath = [...path];
+          if (typeof processedPath[0] === "number") {
+            jsonpathStr = `$[${processedPath[0]}]`;
+            processedPath.shift();
           }
-          if (path.length !== 0) {
-            jsonpathStr = jsonpathStr + window.jsonpath.stringify(path).slice(1);
+          if (processedPath.length !== 0) {
+            jsonpathStr = jsonpathStr + window.jsonpath.stringify(processedPath).slice(1);
           }
           return true;
         }
@@ -1147,6 +1160,13 @@
       setModeCode(event) {
         if ($(event.currentTarget).parents("#rightSection").length >= 1) {
           this.jsonEditorRight.setMode("code");
+          const jsonRightStr = this.jsonEditorRight.getText();
+          this.jsonEditorRight.updateText(jsonRightStr);
+          this.jsonRightClassNameMap = {};
+          this.jsonRightClassNameMapStr = "";
+          this.__addEditorWatchEvent("jsonEditorRight");
+
+        } else {
           const jsonRightStr = this.jsonEditorRight.getText();
           this.jsonEditorRight.updateText(jsonRightStr);
           this.jsonRightClassNameMap = {};
@@ -2606,7 +2626,8 @@
                 } else {
                   oneDmpResValue = oneDmpRes[1];
                 }
-                oneDmpResValue = oneDmpResValue.replaceAll("<", "&lt;");
+                // 完整转义所有 HTML 特殊字符，防止 XSS
+                oneDmpResValue = escapeHtml(oneDmpResValue);
                 if (oneDmpRes[0] === 0) {  // 相同的内容
                   jsonEditorLeftOneDiffData.valueDiffDatas.push([0, oneDmpResValue]);
                   jsonEditorRightOneDiffData.valueDiffDatas.push([0, oneDmpResValue]);
@@ -2908,7 +2929,7 @@
                   });
                 } else {
                   if (lineData.jsonDataType === "string" && lineData.jsonDataType !== lineData.otherSideDataType) {
-                    $(valueEls[0]).html(`<span class="removeDiffStr" contenteditable="true">"</span>${lineData.jsonData}<span class="removeDiffStr" contenteditable="true">"</span>`);
+                    $(valueEls[0]).html(`<span class="removeDiffStr" contenteditable="true">"</span>${escapeHtml(lineData.jsonData)}<span class="removeDiffStr" contenteditable="true">"</span>`);
                   }
                 }
               }
@@ -2986,7 +3007,7 @@
                   });
                 } else {
                   if (lineData.jsonDataType === "string" && lineData.jsonDataType !== lineData.otherSideDataType) {
-                    $(valueEls[0]).html(`<span class="addDiffStr" contenteditable="true">"</span>${lineData.jsonData}<span class="addDiffStr" contenteditable="true">"</span>`);
+                    $(valueEls[0]).html(`<span class="addDiffStr" contenteditable="true">"</span>${escapeHtml(lineData.jsonData)}<span class="addDiffStr" contenteditable="true">"</span>`);
                   }
                 }
               }
@@ -3084,15 +3105,12 @@
           const uniqueAllDiffLines = [...new Set(allDiffLines)];
 
           let index;
+          // 使用模运算实现循环跳转，避免边界计算错误
+          const len = uniqueAllDiffLines.length;
           if (upOrdown === "up") {
-            index = this.jsonDiffLastIndex - 1;
-            if (index <= 0) {
-              index = uniqueAllDiffLines.length - 1 + index;
-            }
+            index = ((this.jsonDiffLastIndex - 1) % len + len) % len;
           } else {
-            index = this.jsonDiffLastIndex + 1;
-            if (index > uniqueAllDiffLines.length - 1) {
-              index = index - uniqueAllDiffLines.length - 1;
+            index = (this.jsonDiffLastIndex + 1) % len;
             }
           }
           let lineNum = uniqueAllDiffLines[index] - 1;
