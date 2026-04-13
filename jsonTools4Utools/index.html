@@ -1386,12 +1386,12 @@
         this.isAutoFilledQuery = false;
         try {
           let jsonData;
-          // 判断数据源侧边：优先使用 transJsonEditorName（筛选/排序按钮指定），否则使用 jsonEditorActive
+          // 判断数据源侧边：普通查询以光标所在面板为准（jsonEditorActive）
           let isSourceRight;
-          if (this.transJsonEditorName) {
-            isSourceRight = this.transJsonEditorName === "JSON右";
-          } else {
+          if (this.jsonEditorActive) {
             isSourceRight = this.jsonEditorActive === "右";
+          } else if (this.transJsonEditorName) {
+            isSourceRight = this.transJsonEditorName === "JSON右";
           }
           if (isSourceRight) {
             // jq 模式需要用普通 JSON.parse，避免 LosslessNumber 对象问题
@@ -1512,11 +1512,11 @@
         try {
           // 获取当前JSON数据
           let jsonData;
-          // 判断数据源侧边：优先使用 transJsonEditorName（筛选/排序按钮指定），否则使用 jsonEditorActive
+          // 判断数据源侧边：筛选/排序操作以面板所属位置为准（transJsonEditorName），光标作为兜底
           let isSourceRight;
           if (this.transJsonEditorName) {
             isSourceRight = this.transJsonEditorName === "JSON右";
-          } else {
+          } else if (this.jsonEditorActive) {
             isSourceRight = this.jsonEditorActive === "右";
           }
           if (isSourceRight) {
