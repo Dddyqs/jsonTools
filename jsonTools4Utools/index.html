@@ -1387,7 +1387,7 @@
         try {
           let jsonData;
           // 判断数据源侧边：普通查询以光标所在面板为准（jsonEditorActive）
-          let isSourceRight;
+          let isSourceRight = false;
           if (this.jsonEditorActive) {
             isSourceRight = this.jsonEditorActive === "右";
           } else if (this.transJsonEditorName) {
@@ -1513,7 +1513,7 @@
           // 获取当前JSON数据
           let jsonData;
           // 判断数据源侧边：筛选/排序操作以面板所属位置为准（transJsonEditorName），光标作为兜底
-          let isSourceRight;
+          let isSourceRight = false;
           if (this.transJsonEditorName) {
             isSourceRight = this.transJsonEditorName === "JSON右";
           } else if (this.jsonEditorActive) {
@@ -2023,7 +2023,7 @@
         this.isBoxHidden.jsonEditorRightBox = false;
       },
       // 排序和转换
-      transJson() {
+      async transJson() {
         let queryStrs = [];
         let queryOptions = this.__getRealJmesQueryOptions(false);
         // 如果有 path 选项，就要添加进去
@@ -2067,7 +2067,7 @@
         }
         // 标记为自动填充的查询，避免记录历史
         this.isAutoFilledQuery = true;
-        this.getJsonByQuery();
+        await this.getJsonByQuery();
       },
       // 按key对json排序
       sortJsonByKey() {
@@ -2416,7 +2416,6 @@
           }
           // 1.先把路径转换一下
           let diffPath = "$" + oneDiffPatch.path.replaceAll("/", ".");
-          this.jsonDiffPatchList.push({ op: oneDiffPatch.op, path: diffPath });
           const diffPathCurrentJsonEditorLeftIndex = jsonpathLineDictLeftKeys.indexOf(diffPath);
           const diffPathCurrentJsonEditorRightIndex = jsonpathLineDictRightKeys.indexOf(diffPath);
           // 2.再根据这个路径去拿取差异数据
@@ -2653,10 +2652,10 @@
             } else {
               // 如果是 bigint 或 number, diffpath需要重新获取（取父级）
               let readDiffPath = diffPath;
-              parentJsonpath = diffPath.split(".").slice(0, -1).join(".");
-              parentData = JSONPath.JSONPath(parentJsonpath, jsonEditorLeftData);
+              const parentJsonpath = diffPath.split(".").slice(0, -1).join(".");
+              const parentData = JSONPath.JSONPath(parentJsonpath, jsonEditorLeftData);
               if (parentData && parentData[0].isLosslessNumber) {
-                parentKeysStr = JSON.stringify(Object.keys(parentData[0]));
+                const parentKeysStr = JSON.stringify(Object.keys(parentData[0]));
                 if (diffPath.endsWith(".value") && parentKeysStr === '["isLosslessNumber","value"]') {
                   readDiffPath = parentJsonpath;
                   jsonEditorLeftOneDiffData.jsonData = parentData[0];
@@ -2703,10 +2702,10 @@
             } else {
               // 如果是 bigint 或 number, diffpath需要重新获取
               let readDiffPath = diffPath;
-              parentJsonpath = diffPath.split(".").slice(0, -1).join(".");
-              parentData = JSONPath.JSONPath(parentJsonpath, jsonEditorRightData);
+              const parentJsonpath = diffPath.split(".").slice(0, -1).join(".");
+              const parentData = JSONPath.JSONPath(parentJsonpath, jsonEditorRightData);
               if (parentData && parentData[0].isLosslessNumber) {
-                parentKeysStr = JSON.stringify(Object.keys(parentData[0]));
+                const parentKeysStr = JSON.stringify(Object.keys(parentData[0]));
                 if (diffPath.endsWith(".value") && parentKeysStr === '["isLosslessNumber","value"]') {
                   readDiffPath = parentJsonpath;
                   jsonEditorRightOneDiffData.jsonData = parentData[0];
@@ -2775,7 +2774,7 @@
             return;
           }
           let diffHtmlOne = ``;
-          for (let i; diffLineLengthCount < textLineLength; i++) {
+          for (let i = 0; diffLineLengthCount < textLineLength; i++) {
             const diffOp = copyDiffList[copyDiffListIndex][0];
             let diffText = copyDiffList[copyDiffListIndex][1];
             diffLineLengthCount = diffLineLengthCount + diffText.length;
@@ -2824,7 +2823,7 @@
         const lineIndexEls = document.querySelectorAll(`.${editor.getName()} .ace_gutter-cell`);
         let lineNumbers = [];
         lineIndexEls.forEach((lineIndexEl, index) => {
-          lineInt = Number(lineIndexEl.innerText);
+          const lineInt = Number(lineIndexEl.innerText);
           // 这个数可能不在显示范围内，所以要判断一下
           if (lineInt >= minRow + 1 && lineInt <= maxRow + 1) {
             lineNumbers.push(lineInt);   // 加上行号
