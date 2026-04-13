@@ -1419,7 +1419,9 @@
             }
           } else if (this.jsonQueryMode === "jmespath") {
             // jsonData 已在上方根据 isSourceRight 读取，直接使用
-            resJsonData = this.jsonEditorLeft.options.executeQuery(jsonData, this.jsonQueryStr)
+            // 根据数据源选择对应编辑器的 executeQuery
+            const activeEditor = isSourceRight ? this.jsonEditorRight : this.jsonEditorLeft;
+            resJsonData = activeEditor.options.executeQuery(jsonData, this.jsonQueryStr)
           } else if (this.jsonQueryMode === "jq") {
             // 检查 jaqWasm 是否可用
             if (!window.jaqWasm) {
@@ -1798,7 +1800,7 @@
             this.isBoxHidden[el] = true;
           }
           if (!this.isBoxHidden[el]) {
-            $("#" + el).attr({ style: this.elStylesDisplay[el] })
+            $("#" + el).attr({ style: this.elStylesDisplay[el] || "" })
           }
           // 如果右侧两个子级隐藏，就隐藏整个右侧并让左侧铺满
           if (this.isBoxHidden.aceEditorBox && this.isBoxHidden.jsonEditorRightBox) {
@@ -1936,7 +1938,9 @@
           if (Object.keys(queryOptions).length === 1 || queryOptions.path) {
             jmepsRes = jsonData;
           } else {
-            jmepsRes = this.jsonEditorLeft.options.executeQuery(jsonData, this.queryOptions[optionKey]);
+            // 根据数据源选择对应的编辑器执行查询
+            const activeEditor = this.transJsonEditorName === "JSON右" ? this.jsonEditorRight : this.jsonEditorLeft;
+            jmepsRes = activeEditor.options.executeQuery(jsonData, this.queryOptions[optionKey]);
           }
           // 再更新路径
           // 空结果就不更新了
@@ -2633,7 +2637,7 @@
                   if (jsonpath.indexOf(diffPath) !== -1 && jsonEditorLeftOneDiffData.classNameLineNum.indexOf(line) == -1) {
                     jsonEditorLeftOneDiffData.classNameLineNum.push(line);
                     // 转为行数据
-                    if (jsonEditorLeftOneDiffData.jsonDataType | jsonEditorLeftOneDiffData.jsonpath === jsonpath) {
+                    if (jsonEditorLeftOneDiffData.jsonDataType || jsonEditorLeftOneDiffData.jsonpath === jsonpath) {
                       jsonEditorLeftOneDiffData.jsonpath = jsonpath;
                       this.jsonEditorLeftDiffLineData[line] = myJsonParse(myJsonStringify(jsonEditorLeftOneDiffData));
                     } else {
@@ -2683,7 +2687,7 @@
                 lines.forEach((line, index) => {
                   if (jsonpath.indexOf(diffPath) !== -1 && jsonEditorRightOneDiffData.classNameLineNum.indexOf(line) == -1) {
                     jsonEditorRightOneDiffData.classNameLineNum.push(line);
-                    if (jsonEditorRightOneDiffData.jsonDataType | jsonEditorRightOneDiffData.jsonpath === jsonpath) {
+                    if (jsonEditorRightOneDiffData.jsonDataType || jsonEditorRightOneDiffData.jsonpath === jsonpath) {
                       jsonEditorRightOneDiffData.jsonpath = jsonpath;
                       this.jsonEditorRightDiffLineData[line] = myJsonParse(myJsonStringify(jsonEditorRightOneDiffData));
                     } else {
