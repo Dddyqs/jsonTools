@@ -924,7 +924,7 @@
               }
               // 更新排序用的jsonpaths，但是要忽略 projection 选项
               try {
-                if (!this.queryOptions.projection.fields.length > 0) {
+                if (!this.queryOptions.projection.fields.length) {
                   await this.__updateTransJsonpaths(editorObj.editor.get(), this.queryOptions);
                 }
               } catch (error) {
@@ -1088,16 +1088,9 @@
           e.preventDefault();
           const drag = e.target;
           const parent = drag.parentElement;
-          const isLeft = parent.classList.contains('#leftSection');
-          let topElement, bottomElement;
-
-          if (isLeft) {
-            topElement = parent.querySelector('#leftSection');
-            bottomElement = parent.querySelector('#leftSection');
-          } else {
-            topElement = parent.querySelector('#jsonEditorRightBox');
-            bottomElement = parent.querySelector('#aceEditorBox');
-          }
+          // 水平分割条仅存在于右侧区域，直接获取上下两个面板
+          const topElement = parent.querySelector('#jsonEditorRightBox');
+          const bottomElement = parent.querySelector('#aceEditorBox');
 
           const startY = e.clientY;
           const startHeight = topElement.offsetHeight;
@@ -1425,13 +1418,8 @@
               resJsonData = jpResult;
             }
           } else if (this.jsonQueryMode === "jmespath") {
-            // 使用 isSourceRight 判断数据源，保持一致性
-            if (isSourceRight) {
-              jsonData = LosslessJSON.parse(this.jsonEditorRight.getText(), myLosslessJSONReviver);
-            } else {
-              jsonData = LosslessJSON.parse(this.jsonEditorLeft.getText(), myLosslessJSONReviver);
-            }
-            resJsonData = vm.jsonEditorLeft.options.executeQuery(jsonData, this.jsonQueryStr)
+            // jsonData 已在上方根据 isSourceRight 读取，直接使用
+            resJsonData = this.jsonEditorLeft.options.executeQuery(jsonData, this.jsonQueryStr)
           } else if (this.jsonQueryMode === "jq") {
             // 检查 jaqWasm 是否可用
             if (!window.jaqWasm) {
