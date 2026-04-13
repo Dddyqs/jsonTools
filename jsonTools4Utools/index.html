@@ -1166,7 +1166,7 @@
           this.jsonRightClassNameMapStr = "";
           this.__addEditorWatchEvent("jsonEditorRight");
 
-        } else {
+        } else if ($(event.currentTarget).parents("#leftSection").length >= 1) {
           const jsonRightStr = this.jsonEditorRight.getText();
           this.jsonEditorRight.updateText(jsonRightStr);
           this.jsonRightClassNameMap = {};
@@ -2513,16 +2513,16 @@
                       jsonEditorLeftKey = `${jsonEditorLeftKey}${oneDmpResValue}`;
                       jsonEditorRightKey = `${jsonEditorRightKey}${oneDmpResValue}`;
                     } else if (oneDmpRes[0] === 1) {  // jsonEditorRight 多的内容
-                      jsonEditorRightKey = jsonEditorRightKey + `<span class=\"addDiffStr\" contenteditable=\"true\">${oneDmpResValue}</span>`;
+                      jsonEditorRightKey = jsonEditorRightKey + `<span class=\"addDiffStr\" contenteditable=\"true\">${escapeHtml(oneDmpResValue)}</span>`;
                     } else if (oneDmpRes[0] === -1) {  // jsonEditorLeft 多的内容
-                      jsonEditorLeftKey = jsonEditorLeftKey + `<span class=\"removeDiffStr\" contenteditable=\"true\">${oneDmpResValue}</span>`;
+                      jsonEditorLeftKey = jsonEditorLeftKey + `<span class=\"removeDiffStr\" contenteditable=\"true\">${escapeHtml(oneDmpResValue)}</span>`;
                     }
                   })
                 } else {
                   jsonEditorLeftKey = diffPath.split(".").pop();
                 }
-                jsonEditorLeftOneDiffData.keyInnerHtml = `"${jsonEditorLeftKey}"`;
-                jsonEditorRightOneDiffData.keyInnerHtml = `"${jsonEditorRightKey}"`;
+                jsonEditorLeftOneDiffData.keyInnerHtml = `"${escapeHtml(jsonEditorLeftKey)}"`;
+                jsonEditorRightOneDiffData.keyInnerHtml = `"${escapeHtml(jsonEditorRightKey)}"`;
               }
             }
           } else if (oneDiffPatch.op === "add") {
@@ -2594,16 +2594,16 @@
                       jsonEditorLeftKey = `${jsonEditorLeftKey}${oneDmpResValue}`;
                       jsonEditorRightKey = `${jsonEditorRightKey}${oneDmpResValue}`;
                     } else if (oneDmpRes[0] === 1) {  // jsonEditorRight 多的内容
-                      jsonEditorRightKey = jsonEditorRightKey + `<span class=\"addDiffStr\" contenteditable=\"true\">${oneDmpResValue}</span>`;
+                      jsonEditorRightKey = jsonEditorRightKey + `<span class=\"addDiffStr\" contenteditable=\"true\">${escapeHtml(oneDmpResValue)}</span>`;
                     } else if (oneDmpRes[0] === -1) {  // jsonEditorLeft 多的内容
-                      jsonEditorLeftKey = jsonEditorLeftKey + `<span class=\"removeDiffStr\" contenteditable=\"true\">${oneDmpResValue}</span>`;
+                      jsonEditorLeftKey = jsonEditorLeftKey + `<span class=\"removeDiffStr\" contenteditable=\"true\">${escapeHtml(oneDmpResValue)}</span>`;
                     }
                   })
                 } else {
                   jsonEditorRightKey = diffPath.split(".").pop();
                 }
-                jsonEditorLeftOneDiffData.keyInnerHtml = `"${jsonEditorLeftKey}"`;
-                jsonEditorRightOneDiffData.keyInnerHtml = `"${jsonEditorRightKey}"`;
+                jsonEditorLeftOneDiffData.keyInnerHtml = `"${escapeHtml(jsonEditorLeftKey)}"`;
+                jsonEditorRightOneDiffData.keyInnerHtml = `"${escapeHtml(jsonEditorRightKey)}"`;
               }
             }
           } else {  // replace
@@ -2664,7 +2664,7 @@
                       jsonEditorLeftOneDiffData.jsonpath = jsonpath;
                       jsonEditorLeftOneDiffData.keyDiffDatas = [];
                       let diffData2 = myJsonParse(myJsonStringify(jsonEditorLeftOneDiffData));
-                      diffData2.keyInnerHtml = `"${jsonpath.split(".").pop()}"`;
+                      diffData2.keyInnerHtml = `"${escapeHtml(jsonpath.split(".").pop())}"`;
                       this.jsonEditorLeftDiffLineData[line] = diffData2;
                     }
                   }
@@ -2714,7 +2714,7 @@
                       jsonEditorRightOneDiffData.jsonpath = jsonpath;
                       jsonEditorRightOneDiffData.keyDiffDatas = [];
                       let diffData2 = myJsonParse(myJsonStringify(jsonEditorRightOneDiffData));
-                      diffData2.keyInnerHtml = `"${jsonpath.split(".").pop()}"`;
+                      diffData2.keyInnerHtml = `"${escapeHtml(jsonpath.split(".").pop())}"`;
                       this.jsonEditorRightDiffLineData[line] = diffData2;
                     }
                   }
@@ -2757,7 +2757,7 @@
         let copyDiffList = myJsonParse(myJsonStringify(diffList));
         const newTextList = [];
         let allText = textList.join('');
-        allText = allText.replaceAll("<", "&lt;");
+        allText = escapeHtml(allText);
         let diffAllText = ``;
         copyDiffList.forEach(diff => {
           diffAllText = `${diffAllText}${diff[1]}`;
@@ -2769,7 +2769,7 @@
         // 把 text 每一行在字符串里面的 start end 位置记录下来
         const textLineLengthList = [];
         textList.forEach((text, index) => {
-          text = text.replaceAll("<", "&lt;");
+          text = escapeHtml(text);
           if (index === 0) {
             textLineLengthList.push(text.length);
           } else {
