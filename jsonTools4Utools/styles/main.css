@@ -177,6 +177,20 @@ body {
   margin-left: 3px;
   max-width: 900px;
   flex-shrink: 0;
+  vertical-align: middle;
+}
+
+/* 输入框 + 执行按钮 统一 mini 高度 */
+.jsonQuery .el-input-group,
+.jsonQuery .el-input__inner,
+.jsonQuery .el-input-group__append,
+.jsonQuery .el-input-group__append .el-button {
+  height: 28px !important;
+  line-height: 28px !important;
+  box-sizing: border-box !important;
+}
+.jsonQuery .el-input-group__append .el-button {
+  padding: 0 12px !important;
 }
 
 /* 调整查询方式下拉框选项的内边距 */
@@ -197,18 +211,14 @@ body {
 
 #jsonQuery {
   display: inline-flex;
-  height: 100%;
+  height: auto;
   padding-left: 3px;
   padding-right: 3px;
   color: #000000;
 }
 
-#jsonQuery .el-input__inner {
-  max-width: 400px;
-}
-
 .el-input-group {
-  height: 100%;
+  height: auto;
 }
 
 /* ==================== 编辑器菜单样式 ==================== */
@@ -243,6 +253,19 @@ body {
   font-weight: 600;
 }
 
+/* tree 模式搜索输入框：默认窄，聚焦时自动展开 */
+.tree-search-input {
+  margin-left: 5px;
+  width: 70px;
+  max-width: 360px;
+  transition: width 0.3s ease;
+  vertical-align: middle;
+}
+.tree-search-input:focus-within,
+.tree-search-input:hover {
+  width: 260px;
+}
+
 .el-dropdown-menu__item {
   line-height: 15px;
   margin-top: 4px;
@@ -273,8 +296,22 @@ div.jsoneditor-tree table.jsoneditor-tree {
 /* ==================== Diff 对比样式 ==================== */
 
 .el-badge__content.is-fixed {
-  transform: translateY(100%) translateX(-30%);
+  transform: translateY(-50%) translateX(50%);
   z-index: 9999;
+}
+
+/* 当前聚焦的差异行 — 闪烁高亮 */
+.diff-current-highlight {
+  animation: diffFlash 1.5s ease-in-out 2 !important;
+  outline: 2px solid #E6A23C !important;
+  outline-offset: -2px !important;
+}
+
+@keyframes diffFlash {
+  0%, 100% { background-color: inherit; }
+  25% { background-color: rgba(230, 162, 60, 0.35); }
+  50% { background-color: rgba(230, 162, 60, 0.55); }
+  75% { background-color: rgba(230, 162, 60, 0.35); }
 }
 
 .addDiffLine {
@@ -310,9 +347,22 @@ span {
   width: 100%;
 }
 
-/* 选中的模式 */
+/* 选中的模式 — 绿色 */
 .modeActive {
-  background-color: #F56C6C !important;
+  background-color: #67C23A !important;
+  border-color: #67C23A !important;
+  color: #fff !important;
+}
+
+/* 编辑器菜单栏按钮：覆盖 primary 蓝色为绿色系 */
+.editorMenu .el-button--primary {
+  color: #e9f0e2;
+  border-color: transparent;
+  background-color: transparent;
+}
+.editorMenu .el-button--primary:hover {
+  color: #fff;
+  background-color: rgba(255, 255, 255, 0.15);
 }
 
 /* JSON Editor 编程语言颜色 */

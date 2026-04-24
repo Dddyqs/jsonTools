@@ -11,28 +11,28 @@
   <link rel="stylesheet" href="./styles/main.css">
   <style>
     .jsonQuery .el-input__inner {
-      border-color: var(--active-color, #409EFF);
+      border-color: var(--active-color, #67C23A);
     }
     .jsonQuery .el-input__inner:focus {
-      border-color: var(--active-color, #409EFF);
+      border-color: var(--active-color, #67C23A);
     }
     .jsonQuery .el-input-group__append {
-      border-color: var(--active-color, #409EFF);
+      border-color: var(--active-color, #67C23A);
     }
     .left-checkbox .el-checkbox__input.is-checked .el-checkbox__inner,
     .left-checkbox .el-checkbox__input.is-indeterminate .el-checkbox__inner {
-      background-color: #409EFF;
-      border-color: #409EFF;
+      background-color: #67C23A;
+      border-color: #67C23A;
     }
     .right-checkbox .el-checkbox__input.is-checked .el-checkbox__inner,
     .right-checkbox .el-checkbox__input.is-indeterminate .el-checkbox__inner {
-      background-color: #8E44AD;
-      border-color: #8E44AD;
+      background-color: #67C23A;
+      border-color: #67C23A;
     }
     .editor-checkbox .el-checkbox__input.is-checked .el-checkbox__inner,
     .editor-checkbox .el-checkbox__input.is-indeterminate .el-checkbox__inner {
-      background-color: #E6A23C;
-      border-color: #E6A23C;
+      background-color: #67C23A;
+      border-color: #67C23A;
     }
   </style>
 </head>
@@ -41,14 +41,26 @@
   <el-container id="app" class="app">
     <el-header id="funcsBar" class="funcsBar" style="display: flex; flex-direction: column; padding: 10px; height: auto;">
       <!-- 第一行：查询相关 -->
-      <div style="display: flex; justify-content: flex-start; align-items: center; gap: 8px; width: 100%;">
-        <el-button id="leftRightSwap" plain type="success" size="mini" @click="leftRightSwap">左右对换</el-button>
-        <span :style="{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '50%', backgroundColor: jsonEditorActive === '左' ? '#409EFF' : '#8E44AD', color: '#fff', fontSize: '11px' }">{{ jsonEditorActive }}</span>
+      <div style="display: flex; justify-content: flex-start; align-items: center; gap: 6px; width: 100%; overflow: hidden;">
+        <!-- 左侧固定区 -->
+        <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+          <el-badge :value="jsonDiffCount" :max="999" class="item">
+            <el-button plain type="success" size="mini" @click="jsonDiff">json对比</el-button>
+          </el-badge>
+          <!-- 有差异时显示导航按钮 -->
+          <template v-if="jsonDiffCount > 0">
+            <el-button plain type="success" size="mini" icon="el-icon-arrow-up" title="上一个差异" @click="switchDiff('up')" style="padding: 3px 5px;"></el-button>
+            <el-button plain type="success" size="mini" icon="el-icon-arrow-down" title="下一个差异" @click="switchDiff('down')" style="padding: 3px 5px;"></el-button>
+          </template>
+          <span :style="{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '22px', height: '22px', padding: '0 4px', color: '#67C23A', fontSize: '12px', fontWeight: 'bold' }">{{ jsonEditorActive }}</span>
+        </div>
+        <!-- 中间输入框：弹性填充 -->
         <el-autocomplete id="jsonQuery" class="jsonQuery" v-model="jsonQueryStr" :fetch-suggestions="querySearch"
+          size="mini"
           placeholder="" @change="handleQuerySubmit('output')"
-          :style="{ marginLeft: '2px', flex: '1', maxWidth: '400px', '--active-color': jsonEditorActive === '左' ? '#409EFF' : '#8E44AD' }">
+          :style="{ marginLeft: '2px', flex: '1', minWidth: '150px' }">
           <el-button slot="append" size="mini" :disabled="isAiGenerating" @click="handleQuerySubmit('output')"
-            :style="{ minWidth: '72px', backgroundColor: jsonEditorActive === '左' ? '#409EFF' : '#8E44AD', color: '#fff', borderColor: jsonEditorActive === '左' ? '#409EFF' : '#8E44AD' }">{{ isAiGenerating ? '处理中...' : '执行' }}</el-button>
+            :style="{ minWidth: '72px', backgroundColor: '#67C23A', color: '#fff', borderColor: '#67C23A' }">{{ isAiGenerating ? '处理中...' : '执行' }}</el-button>
           <template slot-scope="{ item }">
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
               <span style="flex: 1;">{{ item.value }}</span>
@@ -57,102 +69,77 @@
           </template>
           <div slot="suffix" style="display: none;"></div>
         </el-autocomplete>
-        <el-dropdown :hide-on-click="false">
-          <el-badge :value="jsonDiffCount" :max="999" class="item">
-            <el-button plain type="success" size="mini" @click="jsonDiff">json对比<i class="el-icon-arrow-down el-icon--right"></i></el-button>
-          </el-badge>
+        <!-- 右侧：设置按钮（固定最右） -->
+        <el-dropdown :hide-on-click="false" trigger="click" style="flex-shrink: 0; margin-left: auto;">
+          <el-button plain type="success" size="mini" icon="el-icon-setting"></el-button>
           <el-dropdown-menu slot="dropdown">
-            <el-dropdown-item><el-button v-if="jsonDiffCount > 0" @click="switchDiff('down')">下一个差异</el-button></el-dropdown-item>
-            <el-dropdown-item><el-button v-if="jsonDiffCount === 0" @click="switchDiff('down')" disabled>下一个差异</el-button></el-dropdown-item>
-            <el-dropdown-item><el-button v-if="jsonDiffCount > 0" @click="switchDiff('up')">上一个差异</el-button></el-dropdown-item>
-            <el-dropdown-item><el-button v-if="jsonDiffCount === 0" @click="switchDiff('up')" disabled>上一个差异</el-button></el-dropdown-item>
-            <el-dropdown-item><el-checkbox v-model="isAsyncScrollView">是否同步滑动</el-checkbox></el-dropdown-item>
-            <el-dropdown-item><el-button @click="__clearDiffClass">清除对比渲染</el-button></el-dropdown-item>
+            <el-dropdown-item>
+              <el-checkbox :value="!isBoxHidden.leftSection" @input="val => { isBoxHidden.leftSection = !val; hiddenBox(); }">左面板</el-checkbox>
+            </el-dropdown-item>
+            <el-dropdown-item>
+              <el-checkbox :value="!isBoxHidden.jsonEditorRightBox" @input="val => { isBoxHidden.jsonEditorRightBox = !val; hiddenBox(); }">右面板</el-checkbox>
+            </el-dropdown-item>
+            <el-dropdown-item>
+              <el-checkbox :value="!isBoxHidden.aceEditorBox" @input="val => { isBoxHidden.aceEditorBox = !val; hiddenBox(); }">输出面板</el-checkbox>
+            </el-dropdown-item>
           </el-dropdown-menu>
         </el-dropdown>
-        <el-checkbox v-if="isBoxHidden.leftSection" :value="!isBoxHidden.leftSection" @input="val => { isBoxHidden.leftSection = !val; hiddenBox(); }" style="margin-right: 10px; color: #409EFF;" class="left-checkbox">
-          勾选展示<span style="display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background-color: #409EFF; color: #fff; font-size: 10px; margin-left: 4px;">左</span>
-        </el-checkbox>
-        <el-checkbox v-if="isBoxHidden.jsonEditorRightBox" :value="!isBoxHidden.jsonEditorRightBox" @input="val => { isBoxHidden.jsonEditorRightBox = !val; hiddenBox(); }" style="margin-right: 10px; color: #8E44AD;" class="right-checkbox">
-          勾选展示<span style="display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background-color: #8E44AD; color: #fff; font-size: 10px; margin-left: 4px;">右</span>
-        </el-checkbox>
-        <el-checkbox v-if="isBoxHidden.aceEditorBox" :value="!isBoxHidden.aceEditorBox" @input="val => { isBoxHidden.aceEditorBox = !val; hiddenBox(); }" style="color: #E6A23C;" class="editor-checkbox">
-          勾选展示<span style="display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background-color: #E6A23C; color: #fff; font-size: 10px; margin-left: 4px;"><i class="el-icon-document" style="font-size: 10px;"></i></span>
-        </el-checkbox>
       </div>
     </el-header>
     <el-main>
       <div id="leftSection" class="leftSection">
         <div id="jsonEditorLeftBox" ref="jsonEditorLeftBox" class="jsonEditorLeftBox">
           <div id="jsonMenu" class="editorMenu">
-            <div class="editorMenuBtn" style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background-color: #409EFF; color: #fff; font-size: 11px; padding: 0;">左</div>
-            <el-upload class="upload-demo" ref="upload" accept=".xlsx,.xlx,.json,.txt"
-              :show-file-list="false" :auto-upload="false" action="" :on-change="importFileJson">
-              <el-button slot="trigger" type="primary" size="mini" class="editorMenuBtn" style="background-color: #409EFF; border-color: #409EFF;">导入</el-button>
-            </el-upload>
-            <el-dropdown :hide-on-click="false" trigger="click">
-              <el-button type="primary" size="mini" class="editorMenuBtn" style="background-color: #409EFF; border-color: #409EFF;">导出</el-button>
-              <el-dropdown-menu slot="dropdown">
-                <el-dropdown-item><el-button @click="exportFile('left', 'txt')">txt</el-button></el-dropdown-item>
-                <el-dropdown-item><el-button @click="exportFile('left', 'json')">json</el-button></el-dropdown-item>
-                <el-dropdown-item><el-button @click="exportFile('left', 'xlsx')">xlsx</el-button></el-dropdown-item>
-              </el-dropdown-menu>
-            </el-dropdown>
+            <div class="editorMenuBtn" style="display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 4px; color: #e9f0e2; font-size: 11px; font-weight: bold;">左</div>
+
+<!-- 模式切换（code/tree）暂时屏蔽，等模式切换 bug 修复后再放开
             <el-button type="primary" size="mini" class="modeActive editorMenuBtn setModeCodeBtn"
-              @click="setModeCode" style="background-color: #409EFF; border-color: #409EFF; margin-right: 0;">code</el-button>
+              @click="setModeCode" style="margin-right: 0;">code</el-button>
             <el-button type="primary" size="mini" class="editorMenuBtn setModeTreeBtn" @click="setModeTree"
-              style="background-color: #409EFF; border-color: #409EFF; margin-left: 0;">tree</el-button>
+              style="margin-left: 0;">tree</el-button> -->
             <el-button v-if="jsonEditorLeftMode === 'code'" type="primary" size="mini"
-              class="editorMenuBtn jsonFormatBtn" @click="jsonFormat" style="background-color: #409EFF; border-color: #409EFF;">格式化</el-button>
+              class="editorMenuBtn jsonFormatBtn" @click="jsonFormat">格式化</el-button>
             <el-button v-if="jsonEditorLeftMode === 'code'" type="primary" size="mini"
-              class="editorMenuBtn jsonCompactBtn" @click="jsonCompact" style="background-color: #409EFF; border-color: #409EFF;">压缩</el-button>
+              class="editorMenuBtn jsonCompactBtn" @click="jsonCompact">压缩</el-button>
             <div v-if="jsonEditorLeftMode === 'code'"> |</div>
-            <el-button type="primary" size="mini" class="editorMenuBtn" @click="toJsonAndCopy" style="background-color: #409EFF; border-color: #409EFF;">转义</el-button>
-            <el-button type="primary" size="mini" class="editorMenuBtn" @click="toObjectAndCopy" style="background-color: #409EFF; border-color: #409EFF;">反转义</el-button>
+            <el-button type="primary" size="mini" class="editorMenuBtn" @click="toJsonAndCopy">转义</el-button>
+            <el-button type="primary" size="mini" class="editorMenuBtn" @click="toObjectAndCopy">反转义</el-button>
             <div> |</div>
-            <el-button type="primary" size="mini" class="editorMenuBtn foldAllBtn" @click="foldAll" style="background-color: #409EFF; border-color: #409EFF;">收缩</el-button>
-            <el-button type="primary" size="mini" class="editorMenuBtn unfoldBtn" @click="unfold" style="background-color: #409EFF; border-color: #409EFF;">展开</el-button>
+            <el-button type="primary" size="mini" class="editorMenuBtn foldAllBtn" @click="foldAll">收缩</el-button>
+            <el-button type="primary" size="mini" class="editorMenuBtn unfoldBtn" @click="unfold">展开</el-button>
             <div> |</div>
             <el-button type="primary" size="mini" class="editorMenuBtn transJsonBtn"
-              @click="__openTransSortJsonBox" style="background-color: #409EFF; border-color: #409EFF;">筛选</el-button>
+              @click="__openTransSortJsonBox">筛选</el-button>
             <div> |</div>
             <el-button v-if="jsonEditorLeftMode==='code'" type="primary" size="mini"
-              class="editorMenuBtn sortJsonByKeyBtn" @click="__openTransSortJsonBox" style="background-color: #409EFF; border-color: #409EFF;">排序</el-button>
-            <el-button v-if="jsonEditorLeftMode==='code'" type="primary" size="mini" class="editorMenuBtn" @click="toggleSortJsonByFieldKey" :title="sortFieldKeyDirection === 'asc' ? '按键升序排序' : '按键降序排序'" style="background-color: #409EFF; border-color: #409EFF;">
+              class="editorMenuBtn sortJsonByKeyBtn" @click="__openTransSortJsonBox">排序</el-button>
+            <el-button v-if="jsonEditorLeftMode==='code'" type="primary" size="mini" class="editorMenuBtn" @click="toggleSortJsonByFieldKey" :title="sortFieldKeyDirection === 'asc' ? '按键升序排序' : '按键降序排序'">
               按键排序<i :class="sortFieldKeyDirection === 'asc' ? 'el-icon-arrow-up' : 'el-icon-arrow-down'"></i>
             </el-button>
-            <div> |</div>
-            <el-dropdown :hide-on-click="false" trigger="click">
-              <el-button type="primary" size="mini" style="background-color: #409EFF; border-color: #409EFF;">json转换<i class="el-icon-arrow-down el-icon--right"></i></el-button>
-              <el-dropdown-menu slot="dropdown">
-                <el-dropdown-item><el-button type="primary" @click="jToY" size="mini" style="background-color: #409EFF; border-color: #409EFF;">json > yaml</el-button></el-dropdown-item>
-                <el-dropdown-item><el-button type="primary" @click="jToX" size="mini" style="background-color: #409EFF; border-color: #409EFF;">json > xml</el-button></el-dropdown-item>
-                <el-dropdown-item><el-button plain type="success" @click="jToP" size="mini">json > properties</el-button></el-dropdown-item>
-                <el-dropdown-item><el-button plain type="success" @click="jToH" size="mini">json > http query</el-button></el-dropdown-item>
-              </el-dropdown-menu>
-            </el-dropdown>
-            <el-input v-if="jsonEditorLeftMode === 'tree'" placeholder="请输入搜索内容" size="mini"
+            <el-input v-if="jsonEditorLeftMode === 'tree'" placeholder="搜索" size="mini"
               v-model="jsonLeftTreeSearchStr" @change="treeSearch('jsonEditorLeft')"
-              @keyup.enter.native="treeSearch('jsonEditorLeft')" style="width: 30%;">
+              @keyup.enter.native="treeSearch('jsonEditorLeft')"
+              class="tree-search-input">
             </el-input>
-            <el-button type="text" size="mini" @click="isBoxHidden.leftSection = true; hiddenBox()" style="margin-left: auto; color: #409EFF;">
-              <i class="el-icon-close" style="font-size: 14px;"></i>
-            </el-button>
+            <span @click="isBoxHidden.leftSection = true; hiddenBox()" style="margin-left: auto; cursor: pointer; padding: 2px 4px;">
+              <i class="el-icon-close" style="font-size: 14px; color: #e9f0e2;"></i>
+            </span>
           </div>
           <div id="jsonEditorLeft" ref="jsonEditorLeft" class="jsonEditorLeft"></div>
         </div>
         <div id="transSortBox">
           <div id="transSortHeader" class="editorMenu">
             <div v-if="transOrSort==='trans'" style="display: flex; align-items: center; gap: 5px;">
-              <span :style="{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '50%', backgroundColor: transJsonEditorName === 'JSON左' ? '#409EFF' : '#8E44AD', color: '#fff', fontSize: '11px' }">{{ transJsonEditorName === 'JSON左' ? '左' : '右' }}</span>
+              <span :style="{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '22px', height: '22px', padding: '0 4px', color: '#e9f0e2', fontSize: '11px', fontWeight: 'bold' }">{{ transJsonEditorName === 'JSON左' ? '左' : '右' }}</span>
               <span>筛选</span>
             </div>
             <div v-if="transOrSort==='sort'" style="display: flex; align-items: center; gap: 5px;">
-              <span :style="{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '50%', backgroundColor: transJsonEditorName === 'JSON左' ? '#409EFF' : '#8E44AD', color: '#fff', fontSize: '11px' }">{{ transJsonEditorName === 'JSON左' ? '左' : '右' }}</span>
+              <span :style="{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '22px', height: '22px', padding: '0 4px', color: '#e9f0e2', fontSize: '11px', fontWeight: 'bold' }">{{ transJsonEditorName === 'JSON左' ? '左' : '右' }}</span>
               <span>排序</span>
             </div>
-            <el-button class="editorMenuBtn" style="position: absolute; right: 0; margin-right: 5px;"
-              icon="el-icon-close" @click="__closeBox('transSortBox')"></el-button>
+            <span class="editorMenuBtn" @click="__closeBox('transSortBox')" style="position: absolute; right: 0; margin-right: 5px; cursor: pointer; padding: 2px 4px;">
+              <i class="el-icon-close" style="font-size: 14px; color: #e9f0e2;"></i>
+            </span>
             <el-button v-if="transOrSort==='trans'" class="editorMenuBtn"
               style="position: absolute; right: 20px; margin-right: 5px;" icon="el-icon-refresh"
               @click="cleanTransJsonConditions">清空</el-button>
@@ -253,59 +240,40 @@
       <div id="rightSection" class="rightSection">
         <div id="jsonEditorRightBox" ref="jsonEditorRightBox" class="jsonEditorRightBox">
           <div id="jsonRightMenu" class="editorMenu">
-            <div class="editorMenuBtn" style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background-color: #8E44AD; color: #fff; font-size: 11px; padding: 0;">右</div>
-            <el-upload class="upload-demo" ref="upload" accept=".xlsx,.xlx,.json,.txt"
-              :show-file-list="false" :auto-upload="false" action="" :on-change="importFileJsonRight">
-              <el-button slot="trigger" type="primary" size="mini" class="editorMenuBtn" style="background-color: #8E44AD; border-color: #8E44AD;">导入</el-button>
-            </el-upload>
-            <el-dropdown :hide-on-click="false" trigger="click">
-              <el-button type="primary" size="mini" class="editorMenuBtn" style="background-color: #8E44AD; border-color: #8E44AD;">导出</el-button>
-              <el-dropdown-menu slot="dropdown">
-                <el-dropdown-item><el-button @click="exportFile('right', 'txt')">txt</el-button></el-dropdown-item>
-                <el-dropdown-item><el-button @click="exportFile('right', 'json')">json</el-button></el-dropdown-item>
-                <el-dropdown-item><el-button @click="exportFile('right', 'xlsx')">xlsx</el-button></el-dropdown-item>
-              </el-dropdown-menu>
-            </el-dropdown>
+            <div class="editorMenuBtn" style="display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 4px; color: #e9f0e2; font-size: 11px; font-weight: bold;">右</div>
+
+<!-- 模式切换（code/tree）暂时屏蔽，等模式切换 bug 修复后再放开
             <el-button type="primary" size="mini" class="modeActive editorMenuBtn setModeCodeBtn"
-              @click="setModeCode" style="background-color: #8E44AD; border-color: #8E44AD; margin-right: 0;">code</el-button>
+              @click="setModeCode" style="margin-right: 0;">code</el-button>
             <el-button type="primary" size="mini" class="editorMenuBtn setModeTreeBtn" @click="setModeTree"
-              style="background-color: #8E44AD; border-color: #8E44AD; margin-left: 0;">tree</el-button>
+              style="margin-left: 0;">tree</el-button> -->
             <el-button v-if="jsonEditorRightMode === 'code'" type="primary" size="mini"
-              class="editorMenuBtn jsonFormatBtn" @click="jsonFormat" style="background-color: #8E44AD; border-color: #8E44AD;">格式化</el-button>
+              class="editorMenuBtn jsonFormatBtn" @click="jsonFormat">格式化</el-button>
             <el-button v-if="jsonEditorRightMode === 'code'" type="primary" size="mini"
-              class="editorMenuBtn jsonCompactBtn" @click="jsonCompact" style="background-color: #8E44AD; border-color: #8E44AD;">压缩</el-button>
+              class="editorMenuBtn jsonCompactBtn" @click="jsonCompact">压缩</el-button>
             <div v-if="jsonEditorRightMode === 'code'"> |</div>
-            <el-button type="primary" size="mini" class="editorMenuBtn" @click="toJsonAndCopy" style="background-color: #8E44AD; border-color: #8E44AD;">转义</el-button>
-            <el-button type="primary" size="mini" class="editorMenuBtn" @click="toObjectAndCopy" style="background-color: #8E44AD; border-color: #8E44AD;">反转义</el-button>
+            <el-button type="primary" size="mini" class="editorMenuBtn" @click="toJsonAndCopy">转义</el-button>
+            <el-button type="primary" size="mini" class="editorMenuBtn" @click="toObjectAndCopy">反转义</el-button>
             <div> |</div>
-            <el-button type="primary" size="mini" class="editorMenuBtn foldAllBtn" @click="foldAll" style="background-color: #8E44AD; border-color: #8E44AD;">收缩</el-button>
-            <el-button type="primary" size="mini" class="editorMenuBtn unfoldBtn" @click="unfold" style="background-color: #8E44AD; border-color: #8E44AD;">展开</el-button>
+            <el-button type="primary" size="mini" class="editorMenuBtn foldAllBtn" @click="foldAll">收缩</el-button>
+            <el-button type="primary" size="mini" class="editorMenuBtn unfoldBtn" @click="unfold">展开</el-button>
             <div> |</div>
             <el-button type="primary" size="mini" class="editorMenuBtn transJsonBtn"
-              @click="__openTransSortJsonBox" style="background-color: #8E44AD; border-color: #8E44AD;">筛选</el-button>
+              @click="__openTransSortJsonBox">筛选</el-button>
             <div> |</div>
             <el-button v-if="jsonEditorRightMode==='code'" type="primary" size="mini"
-              class="editorMenuBtn sortJsonByKeyBtn" @click="__openTransSortJsonBox" style="background-color: #8E44AD; border-color: #8E44AD;">排序</el-button>
-            <el-button v-if="jsonEditorRightMode==='code'" type="primary" size="mini" class="editorMenuBtn" @click="toggleSortJsonByFieldKey" :title="sortFieldKeyDirection === 'asc' ? '按键升序排序' : '按键降序排序'" style="background-color: #8E44AD; border-color: #8E44AD;">
+              class="editorMenuBtn sortJsonByKeyBtn" @click="__openTransSortJsonBox">排序</el-button>
+            <el-button v-if="jsonEditorRightMode==='code'" type="primary" size="mini" class="editorMenuBtn" @click="toggleSortJsonByFieldKey" :title="sortFieldKeyDirection === 'asc' ? '按键升序排序' : '按键降序排序'">
               按键排序<i :class="sortFieldKeyDirection === 'asc' ? 'el-icon-arrow-up' : 'el-icon-arrow-down'"></i>
             </el-button>
-            <div> |</div>
-            <el-dropdown :hide-on-click="false" trigger="click">
-              <el-button type="primary" size="mini" style="background-color: #8E44AD; border-color: #8E44AD;">json转换<i class="el-icon-arrow-down el-icon--right"></i></el-button>
-              <el-dropdown-menu slot="dropdown">
-                <el-dropdown-item><el-button type="primary" @click="jToY" size="mini" style="background-color: #8E44AD; border-color: #8E44AD;">json > yaml</el-button></el-dropdown-item>
-                <el-dropdown-item><el-button type="primary" @click="jToX" size="mini" style="background-color: #8E44AD; border-color: #8E44AD;">json > xml</el-button></el-dropdown-item>
-                <el-dropdown-item><el-button plain type="success" @click="jToP" size="mini">json > properties</el-button></el-dropdown-item>
-                <el-dropdown-item><el-button plain type="success" @click="jToH" size="mini">json > http query</el-button></el-dropdown-item>
-              </el-dropdown-menu>
-            </el-dropdown>
-            <el-input v-if="jsonEditorRightMode === 'tree'" placeholder="请输入搜索内容" size="mini"
+            <el-input v-if="jsonEditorRightMode === 'tree'" placeholder="搜索" size="mini"
               v-model="jsonRightTreeSearchStr" @change="treeSearch('jsonEditorRight')"
-              @keyup.enter.native="treeSearch('jsonEditorRight')" style="width: 30%;">
+              @keyup.enter.native="treeSearch('jsonEditorRight')"
+              class="tree-search-input">
             </el-input>
-            <el-button type="text" size="mini" @click="isBoxHidden.jsonEditorRightBox = true; hiddenBox()" style="margin-left: auto; color: #8E44AD;">
-              <i class="el-icon-close" style="font-size: 14px;"></i>
-            </el-button>
+            <span @click="isBoxHidden.jsonEditorRightBox = true; hiddenBox()" style="margin-left: auto; cursor: pointer; padding: 2px 4px;">
+              <i class="el-icon-close" style="font-size: 14px; color: #e9f0e2;"></i>
+            </span>
           </div>
           <div id="jsonEditorRight" ref="jsonEditorRight" class="jsonEditorRight"></div>
         </div>
@@ -313,9 +281,9 @@
         <div class="drag-horizontal"></div>
         <div id="aceEditorBox" ref="aceEditorBox" class="aceEditorBox">
           <div id="aceEditorMenu" class="editorMenu">
-            <span style="display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background-color: #E6A23C; color: #fff; font-size: 10px; margin-right: 5px;"><i class="el-icon-document" style="font-size: 10px;"></i></span>
+            <span style="display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 3px; color: #e9f0e2; font-size: 10px; margin-right: 5px; font-weight: bold;"><i class="el-icon-document" style="font-size: 10px;"></i></span>
             <el-dropdown :hide-on-click="false" trigger="click">
-              <el-button type="primary" size="mini" class="editorMenuBtn" style="background-color: #E6A23C; border-color: #E6A23C;">
+              <el-button type="primary" size="mini" class="editorMenuBtn">
                 {{ (aceModes.find(m => m.value === aceLanguage) || {}).label || '语言' }}<i class="el-icon-arrow-down el-icon--right"></i>
               </el-button>
               <el-dropdown-menu slot="dropdown">
@@ -325,39 +293,15 @@
               </el-dropdown-menu>
             </el-dropdown>
             <el-button id="beautifyBtn" type="primary" size="mini" class="editorMenuBtn"
-              @click="beautifyContent" style="background-color: #E6A23C; border-color: #E6A23C;">美化</el-button>
-            <el-upload class="upload-demo" ref="upload"
-              accept=".xlsx,.xlx,.json,.txt,.yaml,.yml,.xml,.html,.js,.java,.py,.sql,.properties"
-              :show-file-list="false" :auto-upload="false" action="" :on-change="importFileAce">
-              <el-button slot="trigger" type="primary" size="mini" class="editorMenuBtn" style="background-color: #E6A23C; border-color: #E6A23C;">导入</el-button>
-            </el-upload>
-            <el-dropdown :hide-on-click="false" trigger="click">
-              <el-button type="primary" size="mini" class="editorMenuBtn" style="background-color: #E6A23C; border-color: #E6A23C;">导出</el-button>
-              <el-dropdown-menu slot="dropdown">
-                <el-dropdown-item><el-button @click="exportFile('ace', 'txt')">txt</el-button></el-dropdown-item>
-                <el-dropdown-item><el-button @click="exportFile('ace', 'json')">json</el-button></el-dropdown-item>
-                <el-dropdown-item><el-button @click="exportFile('ace', 'yaml')">yaml</el-button></el-dropdown-item>
-                <el-dropdown-item><el-button @click="exportFile('ace', 'xml')">xml</el-button></el-dropdown-item>
-                <el-dropdown-item><el-button @click="exportFile('ace', 'html')">html</el-button></el-dropdown-item>
-                <el-dropdown-item><el-button @click="exportFile('ace', 'js')">js</el-button></el-dropdown-item>
-                <el-dropdown-item><el-button @click="exportFile('ace', 'java')">java</el-button></el-dropdown-item>
-                <el-dropdown-item><el-button @click="exportFile('ace', 'py')">py</el-button></el-dropdown-item>
-                <el-dropdown-item><el-button @click="exportFile('ace', 'sql')">sql</el-button></el-dropdown-item>
-                <el-dropdown-item><el-button @click="exportFile('ace', 'properties')">properties</el-button></el-dropdown-item>
-              </el-dropdown-menu>
-            </el-dropdown>
+              @click="beautifyContent">美化</el-button>
             <div v-if="aceLanguage === 'ace/mode/text'"> |</div>
             <el-button v-if="aceLanguage === 'ace/mode/text'" id="base64DecodeBtn" type="primary" size="mini" class="editorMenuBtn"
-              @click="base64Decode" style="background-color: #E6A23C; border-color: #E6A23C;">Base64解码</el-button>
+              @click="base64Decode">Base64解码</el-button>
             <el-button v-if="aceLanguage === 'ace/mode/text'" id="urlDecodeBtn" type="primary" size="mini" class="editorMenuBtn"
-              @click="urlDecode" style="background-color: #E6A23C; border-color: #E6A23C;">URL解码</el-button>
-            <el-button v-if="aceLanguage === 'ace/mode/yaml'" type="primary" size="mini" class="editorMenuBtn" @click="yToJ" style="background-color: #E6A23C; border-color: #E6A23C;">转json</el-button>
-            <el-button v-if="aceLanguage === 'ace/mode/xml'" type="primary" size="mini" class="editorMenuBtn" @click="xToJ" style="background-color: #E6A23C; border-color: #E6A23C;">转json</el-button>
-            <el-button v-if="aceLanguage === 'ace/mode/properties'" type="primary" size="mini" class="editorMenuBtn" @click="pToJ" style="background-color: #E6A23C; border-color: #E6A23C;">转json</el-button>
-            <el-button v-if="aceLanguage === 'ace/mode/text'" type="primary" size="mini" class="editorMenuBtn" @click="hToJ" style="background-color: #E6A23C; border-color: #E6A23C;">转json</el-button>
-            <el-button type="text" size="mini" @click="isBoxHidden.aceEditorBox = true; hiddenBox()" style="margin-left: auto; color: #E6A23C;">
-              <i class="el-icon-close" style="font-size: 14px;"></i>
-            </el-button>
+              @click="urlDecode">URL解码</el-button>
+            <span @click="isBoxHidden.aceEditorBox = true; hiddenBox()" style="margin-left: auto; cursor: pointer; padding: 2px 4px;">
+              <i class="el-icon-close" style="font-size: 14px; color: #e9f0e2;"></i>
+            </span>
           </div>
           <div id="aceEditor" class="aceEditor"></div>
         </div>
@@ -379,7 +323,6 @@
 <script src="./assets/deep-diff1.0.2.min.js"></script>
 <script src="./assets/fast-json-patch.js"></script>
 <script src="./assets/diff-match-patch.js"></script>
-<script src="./assets/xlsx.js"></script>
 <script src="./assets/lossless-json.min.js"></script>
 <script src="./editorUtils.js"></script>
 <script src="./utils.js"></script>
@@ -420,8 +363,9 @@
         jsonEditorLeftDiffLineData: {},
         jsonEditorRightDiffData: {},
         jsonEditorRightDiffLineData: {},
-        isAsyncScrollView: false,
+        isAsyncScrollView: true,
         _autoDiffTimer: null,
+        _isSwitchingMode: false, // 模式切换锁，防止切换过程中change事件污染状态
         jsonLeftStr: "",
         jsonRightStr: "",
         jsonpathLeftMap: new Map(),
@@ -773,36 +717,13 @@
           if (vm.isQueryExecuting || vm.isJustInsertedData) {
             return;
           }
-          let path;
+          // 仅追踪活跃面板，不再自动填充查询输入框（改为双击触发）
           if (el_id === "jsonEditorLeft") {
             vm.jsonEditorActive = '左';
-            // 清空 transJsonEditorName，让用户手动选择优先级高于筛选/排序按钮
             vm.transJsonEditorName = "";
-            path = getJsonpathByLine(vm.jsonEditorLeft, row.row);
           } else if (el_id === "jsonEditorRight") {
             vm.jsonEditorActive = '右';
-            // 清空 transJsonEditorName，让用户手动选择优先级高于筛选/排序按钮
             vm.transJsonEditorName = "";
-            path = getJsonpathByLine(vm.jsonEditorRight, row.row);
-          }
-          // 根据当前模式转换路径格式并填入输入框（标记为自动生成，不记录历史）
-          if (path) {
-            let queryValue;
-            if (vm.jsonQueryMode === "jq") {
-              // jsonpath → jq
-              if (path === "$") {
-                queryValue = ".";
-              } else if (path.startsWith("$.")) {
-                queryValue = path.substring(1);
-              } else if (path.startsWith("$[")) {
-                queryValue = "." + path.substring(1);
-              } else {
-                queryValue = path;
-              }
-            } else {
-              queryValue = path;
-            }
-            vm.setJsonQueryStr(queryValue, true); // true 表示这是自动生成的
           }
         }
 
@@ -867,6 +788,8 @@
         }
         // 监控模式变化
         editorObj.editor.options.onModeChange = function () {
+          // ★ 切换期间跳过 Vue 数据更新，避免与 jsoneditor 内部 DOM 操作产生竞态（导致 removeChild 异常）
+          if (window.vm._isSwitchingMode) return;
           // 这里不能用 this ，此时是访问不到 this 的
           if (editorName === "jsonEditorLeft") {
             window.vm.jsonEditorLeftMode = window.vm.jsonEditorLeft.getMode();
@@ -897,8 +820,43 @@
           }
         });
 
-        // 监控jsonData变化，每次变化都要更新pathMap
+        // 双击时才计算并加载 jsonpath 到顶部输入框（避免输入时光标移动覆盖输入内容）
+        editorObj.editor.aceEditor.on('dblclick', () => {
+          if (this.isQueryExecuting || this.isJustInsertedData) return;
+          const row = editorObj.editor.aceEditor.getSelection().getCursor();
+          // ace 的 row 是 0-based，但 pathMap 是 1-based，需要 +1
+          const lineNum = row.row + 1;
+          let path;
+          if (editorName === "jsonEditorLeft") {
+            path = getJsonpathByLine(this.jsonEditorLeft, lineNum);
+          } else if (editorName === "jsonEditorRight") {
+            path = getJsonpathByLine(this.jsonEditorRight, lineNum);
+          }
+          if (path) {
+            let queryValue;
+            if (this.jsonQueryMode === "jq") {
+              if (path === "$") {
+                queryValue = ".";
+              } else if (path.startsWith("$.")) {
+                queryValue = path.substring(1);
+              } else if (path.startsWith("$[")) {
+                queryValue = "." + path.substring(1);
+              } else {
+                queryValue = path;
+              }
+            } else {
+              queryValue = path;
+            }
+            this.setJsonQueryStr(queryValue, true); // true 表示这是自动生成的
+          }
+        });
+
+        // 监控jsonData变化，每次变化都要更新pathMap（仅code模式下生效）
         editorObj.editor.aceEditor.on('change', (delta) => {
+          // 模式切换期间跳过所有处理
+          if (this._isSwitchingMode) return;
+          // tree模式下aceEditor内容非标准JSON格式，跳过处理避免状态污染
+          if (editorObj.editor.getMode() !== 'code') return;
           if (editorObj.editor.aceEditor.getValue() === "" || editorObj.editor.aceEditor.getValue() === "{}") return;
           // 检查变化的内容是否影响到了 jsonpaths（key变化、行数变化）
           const { start, end } = delta;
@@ -978,6 +936,8 @@
 
         // 监控 tree 模式下 className 变化
         editorObj.editor.options.onClassName = function ({ path, field, value }) {
+          // ★ 切换期间跳过 Vue 数据更新
+          if (window.vm._isSwitchingMode) return '';
           // 避免特殊字符被占用，所以选用 ▶ 这个作为 JSONpath 的 分隔符
           let pathStr = `${editorObj.editor.container.id}▶`
           pathStr = pathStr + path.join("▶");
@@ -1156,70 +1116,243 @@
           return res[0];
         }
       },
-      // 切换为code模式
-      setModeCode(event) {
-        if ($(event.currentTarget).parents("#rightSection").length >= 1) {
-          this.jsonEditorRight.setMode("code");
-          const jsonRightStr = this.jsonEditorRight.getText();
-          this.jsonEditorRight.updateText(jsonRightStr);
-          this.jsonRightClassNameMap = {};
-          this.jsonRightClassNameMapStr = "";
-          this.__addEditorWatchEvent("jsonEditorRight");
-
-        } else if ($(event.currentTarget).parents("#leftSection").length >= 1) {
-          const jsonRightStr = this.jsonEditorRight.getText();
-          this.jsonEditorRight.updateText(jsonRightStr);
-          this.jsonRightClassNameMap = {};
-          this.jsonRightClassNameMapStr = "";
-          this.__addEditorWatchEvent("jsonEditorRight");
-
-        } else {
-          this.jsonEditorLeft.setMode("code");
-          const jsontData = LosslessJSON.parse(this.jsonEditorLeft.getText());
-          aceEditorInsertData(this.jsonEditorLeft.aceEditor, jsontData);
-          this.__addEditorWatchEvent("jsonEditorLeft");
+      // ====== BigInt 转字符串工具（tree模式不支持bigint）=====
+      __convertBigIntToString(obj) {
+        if (obj === null || obj === undefined) return obj;
+        if (typeof obj === 'bigint') return obj.toString();
+        if (Array.isArray(obj)) return obj.map(v => this.__convertBigIntToString(v));
+        if (typeof obj === 'object' && obj.constructor === Object) {
+          const result = {};
+          for (const key in obj) { result[key] = this.__convertBigIntToString(obj[key]); }
+          return result;
         }
-
+        return obj;
       },
-      // 切换为tree模式
-      setModeTree(event) {
-        // BigInt 转 string，避免 tree 模式序列化失败
-        const convertBigIntToString = (obj) => {
-          if (obj === null || obj === undefined) return obj;
-          if (typeof obj === 'bigint') return obj.toString();
-          if (Array.isArray(obj)) return obj.map(convertBigIntToString);
-          if (typeof obj === 'object') {
-            const result = {};
-            for (const key in obj) {
-              result[key] = convertBigIntToString(obj[key]);
+
+      // 切换为code模式（tree → code）
+      setModeCode(event) {
+        if (this._isSwitchingMode) return;
+        this._isSwitchingMode = true;
+
+        try {
+          const isRight = $(event.currentTarget).parents("#rightSection").length >= 1;
+          const editor = isRight ? this.jsonEditorRight : this.jsonEditorLeft;
+
+          // ★ 用 get() 直接取内部对象（两种模式都能用），再序列化为文本备用
+          let backupText = '';
+          try {
+            const data = editor.get();
+            if (data !== undefined && data !== null && data !== '') {
+              backupText = myJsonStringify(data, null, 2);
             }
-            return result;
+          } catch(e) { /* get失败时尝试getText兜底 */ }
+
+          // 如果get没拿到，再试getText
+          if (!backupText) {
+            backupText = editor.getText() || '';
           }
-          return obj;
+
+          console.log('[setModeCode] 备份数据长度:', backupText.length);
+
+          if (!backupText || !backupText.trim()) {
+            this.$message.warning('没有可恢复的数据，保持当前模式');
+            return;
+          }
+
+          // 执行切换
+          editor.setMode("code");
+          editor.updateText(backupText);
+
+          // 更新状态
+          if (isRight) {
+            this.jsonRightClassNameMap = {};
+            this.jsonRightClassNameMapStr = "";
+            this.jsonEditorRightMode = "code";
+            [this.jsonpathRightMap, this.jsonEditorRightJsonpathLineDict] = buildPathMap(editor.get());
+          } else {
+            this.jsonEditorLeftMode = "code";
+            [this.jsonpathLeftMap, this.jsonEditorLeftJsonpathLineDict] = buildPathMap(editor.get());
+          }
+          console.log('[setModeCode] 切换成功');
+        } catch (e) {
+          console.error('[setModeCode] 错误:', e);
+          this.$message.warning('切换到 code 模式失败: ' + e.message);
+        } finally {
+          setTimeout(() => { this._isSwitchingMode = false; }, 500);
+        }
+      },
+
+      // 切换为tree模式（code → tree）— 销毁旧编辑器，全新创建为 tree 模式
+      // 原因：vanilla-jsoneditor 的 setMode("tree") 在 Vue 环境中会因 DOM 竞态崩溃（removeChild 异常）
+      // 解决：直接绕开 setMode，用 destroy+新建 替代
+      setModeTree(event) {
+        if (this._isSwitchingMode) return;
+        this._isSwitchingMode = true;
+
+        const finish = () => { setTimeout(() => { this._isSwitchingMode = false; }, 500); };
+
+        const doSwitchTree = (editor, isRight) => {
+          const editorName = isRight ? "jsonEditorRight" : "jsonEditorLeft";
+          const elId = isRight ? "jsonEditorRight" : "jsonEditorLeft";
+
+          // ===== 第1步：取数据（完全不改变编辑器状态）=====
+          let rawData = null;
+          try {
+            rawData = editor.get();
+          } catch (e) {
+            console.warn('[setModeTree] editor.get() 失败:', e.message);
+          }
+
+          if (rawData === undefined || rawData === null || rawData === '') {
+            console.log('[setModeTree] get() 为空，尝试从文本解析...');
+            const txt = editor.getText() || (editor.aceEditor ? editor.aceEditor.getValue() : '');
+            if (txt && txt.trim()) {
+              try {
+                rawData = LosslessJSON.parse(txt);
+                console.log('[setModeTree] 文本解析成功');
+              } catch (e2) {
+                console.error('[setModeTree] 文本解析也失败:', e2.message);
+              }
+            }
+          }
+
+          if (rawData === undefined || rawData === null || rawData === '' ||
+              (typeof rawData !== 'object' && typeof rawData !== 'string')) {
+            this.$message.warning('编辑器没有可转换的数据，保持当前模式');
+            finish();
+            return;
+          }
+
+          if (typeof rawData === 'string') {
+            try { rawData = LosslessJSON.parse(rawData); }
+            catch (e) {
+              this.$message.warning('数据格式错误，无法切换: ' + e.message);
+              finish(); return;
+            }
+          }
+
+          // ===== 第2步：处理BigInt ======
+          const safeData = this.__convertBigIntToString(rawData);
+
+          // ===== 第3步：销毁旧编辑器 → 新建为 tree 模式 ======
+          try {
+            // 3a. 销毁旧实例
+            try { editor.destroy(); } catch(e) { console.warn('destroy 可忽略:', e.message); }
+
+            // 3b. 清空容器 DOM
+            const container = document.getElementById(elId);
+            if (container) { container.innerHTML = ''; }
+
+            // 3c. 重置引用
+            if (isRight) { this.jsonEditorRight = undefined; }
+            else { this.jsonEditorLeft = undefined; }
+
+            // 3d. 创建新编辑器
+            const options = {
+              modes: ['code', 'tree'],
+              mainMenuBar: false,
+              search: true,
+            };
+            const vm = this;
+            options.onTextSelectionChange = function (row, col, text) {
+              if (vm.isQueryExecuting || vm.isJustInsertedData) return;
+              if (elId === "jsonEditorLeft") {
+                vm.jsonEditorActive = '左';
+                vm.transJsonEditorName = "";
+              } else if (elId === "jsonEditorRight") {
+                vm.jsonEditorActive = '右';
+                vm.transJsonEditorName = "";
+              }
+            };
+
+            const newEditor = new JSONEditor(container, options);
+            newEditor.setName(editorName);
+
+            if (isRight) { this.jsonEditorRight = newEditor; }
+            else { this.jsonEditorLeft = newEditor; }
+
+            // 3e. 切到 tree 模式（此时编辑器是全新的，不会有 DOM 残留问题）
+            newEditor.setMode("tree");
+            newEditor.set(safeData);
+
+            // 3f. 更新状态
+            if (isRight) { this.jsonEditorRightMode = "tree"; }
+            else { this.jsonEditorLeftMode = "tree"; }
+
+            // 3g. 绑定事件
+            this.__addEditorWatchEvent(editorName);
+
+            console.log(`[setModeTree] ✓ ${editorName} 已切换为 tree 模式（销毁重建方式）`);
+          } catch (err) {
+            console.error('[setModeTree] ✗ 切换失败，回滚到 code:', err);
+            this.__rebuildEditor(editorName, elId, isRight, myJsonStringify(rawData, null, 2), rawData);
+            this.$message.warning('切换 tree 模式失败，已自动恢复 code 模式和原数据');
+          } finally {
+            finish();
+          }
         };
 
         if ($(event.currentTarget).parents("#rightSection").length >= 1) {
-          try {
-            const jsonData = this.jsonEditorRight.get();
-            const safeData = convertBigIntToString(jsonData);
-            this.jsonEditorRight.set(safeData);
-            this.jsonEditorRight.setMode("tree");
-            this.jsonEditorRightMode = "tree";
-          } catch (e) {
-            console.error('Tree mode error:', e);
-            this.$message.warning('切换到 tree 模式失败，请检查数据格式');
-          }
+          doSwitchTree(this.jsonEditorRight, true);
         } else {
-          try {
-            const jsonData = this.jsonEditorLeft.get();
-            const safeData = convertBigIntToString(jsonData);
-            this.jsonEditorLeft.set(safeData);
-            this.jsonEditorLeft.setMode("tree");
-            this.jsonEditorLeftMode = "tree";
-          } catch (e) {
-            console.error('Tree mode error:', e);
-            this.$message.warning('切换到 tree 模式失败，请检查数据格式');
+          doSwitchTree(this.jsonEditorLeft, false);
+        }
+      },
+
+      // 彻底重建编辑器（用于回滚：切换失败时恢复为 code 模式的全新编辑器）
+      __rebuildEditor(editorName, elId, isRight, backupText, rawData) {
+        try {
+          const oldEditor = isRight ? this.jsonEditorRight : this.jsonEditorLeft;
+
+          try { oldEditor.destroy(); } catch(e) { console.warn('destroy 时出错(可忽略):', e.message); }
+
+          const container = document.getElementById(elId);
+          if (container) { container.innerHTML = ''; }
+
+          if (isRight) { this.jsonEditorRight = undefined; }
+          else { this.jsonEditorLeft = undefined; }
+
+          const options = {
+            modes: ['code', 'tree'],
+            mainMenuBar: false,
+            search: true,
+          };
+          const vm = this;
+          options.onTextSelectionChange = function (row, col, text) {
+            if (vm.isQueryExecuting || vm.isJustInsertedData) return;
+            if (elId === "jsonEditorLeft") {
+              vm.jsonEditorActive = '左'; vm.transJsonEditorName = "";
+            } else if (elId === "jsonEditorRight") {
+              vm.jsonEditorActive = '右'; vm.transJsonEditorName = "";
+            }
+          };
+
+          const newEditor = new JSONEditor(container, options);
+          newEditor.setName(editorName);
+
+          if (isRight) { this.jsonEditorRight = newEditor; }
+          else { this.jsonEditorLeft = newEditor; }
+
+          if (backupText && backupText.trim()) {
+            aceEditorInsertData(newEditor.aceEditor, LosslessJSON.parse(backupText));
+            if (dataType(newEditor.get()) === "object" || dataType(newEditor.get()) === "array") {
+              if (isRight) {
+                [this.jsonpathRightMap, this.jsonEditorRightJsonpathLineDict] = buildPathMap(newEditor.get());
+              } else {
+                [this.jsonpathLeftMap, this.jsonEditorLeftJsonpathLineDict] = buildPathMap(newEditor.get());
+              }
+            }
           }
+
+          this.__addEditorWatchEvent(editorName);
+
+          if (isRight) { this.jsonEditorRightMode = "code"; }
+          else { this.jsonEditorLeftMode = "code"; }
+
+          console.log(`[__rebuildEditor] ${editorName} 重建成功，数据长度: ${backupText.length}`);
+        } catch (rebuildErr) {
+          console.error('[__rebuildEditor] 重建也失败了！！:', rebuildErr);
+          this.$message.error('编辑器状态异常，建议刷新页面重试');
         }
       },
       // JSON转义
@@ -1762,11 +1895,11 @@
         const msThreshold = 1000 * 60 * 60 * 24 * 365 * 50; // 50年
         
         // 毫秒时间戳
-        if (num > 1000000000000 && num < 10000000000000) {
+        if (num > 1000000000000n && num < 10000000000000n) {
           return Math.abs(num - now) < msThreshold;
         }
         // 秒时间戳
-        if (num > 1000000000 && num < 10000000000) {
+        if (num > 1000000000n && num < 10000000000n) {
           return Math.abs(num * 1000 - now) < msThreshold;
         }
         return false;
@@ -1777,7 +1910,7 @@
         let ms = num;
         
         // 判断是秒还是毫秒
-        if (num < 10000000000) {
+        if (num < 10000000000n) {
           ms = num * 1000; // 秒转毫秒
         }
         
@@ -2173,7 +2306,7 @@
         }
         // 递归排序对象的所有key
         const sortedData = this.__sortJsonByKeys(jsonData, direction);
-        jsonEditor.updateText(myJsonStringify(sortedData));
+        jsonEditor.updateText(myJsonStringify(sortedData, null, 2));
       },
       // 递归按key排序的辅助函数
       __sortJsonByKeys(data, direction = 'asc') {
@@ -2197,173 +2330,9 @@
         // 基本类型直接返回
         return data;
       },
-      // json 2 yaml
-      jToY() {
-        this.opName = "jToy";
-        this.isBoxHidden.leftSection = false;
-        this.isBoxHidden.transSortBox = true;
-        this.isBoxHidden.jsonEditorRightBox = true;
-        this.isBoxHidden.aceEditorBox = false;
-        try {
-          const jsonStr = this.jsonEditorLeft.getText();
-          const jsonData = LosslessJSON.parse(jsonStr, myJsonReviverLong);
-          const yamlStr = cleanLongXML(window.yaml.dump(jsonData));
-          this.aceLanguage = "ace/mode/yaml";
-          this.aceEditor.setValue(yamlStr);
-        } catch (error) {
-          this.aceEditor.setValue(error.message);
-        }
-      },
-      // yaml 2 json
-      yToJ() {
-        this.opName = "yToJ";
-        this.isBoxHidden.leftSection = false;
-        this.isBoxHidden.transSortBox = true;
-        this.isBoxHidden.jsonEditorRightBox = true;
-        this.isBoxHidden.aceEditorBox = false;
-        try {
-          this.aceLanguage = "ace/mode/yaml";
-          const jsonData = window.yaml.load(this.aceEditor.getValue());
-          aceEditorInsertData(this.jsonEditorLeft.aceEditor, jsonData);
-        } catch (error) {
-          this.jsonEditorLeft.aceEditor.setValue(error.message);
-        }
-      },
-      // json 2 xml
-      jToX() {
-        this.opName = "jToX";
-        this.isBoxHidden.leftSection = false;
-        this.isBoxHidden.transSortBox = true;
-        this.isBoxHidden.jsonEditorRightBox = true;
-        this.isBoxHidden.aceEditorBox = false;
-        try {
-          let jsonData = LosslessJSON.parse(this.jsonEditorLeft.getText(), myJsonReviverLong);
-          if (Object.keys(jsonData).indexOf("root") === -1) {
-            jsonData = { "root": jsonData };
-          }
-          const xmlStr = cleanLongXML(json2xml(jsonData, { compact: true, ignoreComment: true, spaces: 4, header: true }));
-          this.aceLanguage = "ace/mode/xml";
-          this.aceEditor.setValue(xmlStr.replaceAll("&lt;/Long&gt;", "").replaceAll("&lt;Long&gt;", ""));
-        } catch (error) {
-          this.aceEditor.setValue(error.message);
-        }
-      },
-      // xml 2 json
-      xToJ() {
-        this.opName = "xToJ";
-        this.isBoxHidden.leftSection = false;
-        this.isBoxHidden.transSortBox = true;
-        this.isBoxHidden.jsonEditorRightBox = true;
-        this.isBoxHidden.aceEditorBox = false;
-        try {
-          this.aceLanguage = "ace/mode/xml";
-          const jsonStr = xml2json(this.aceEditor.getValue(), {
-            compact: true, spaces: 4, textNodeName: '', ignoreAttributes: true
-          });
-          let jsonData = myJsonParse(jsonStr);
-          if (Object.keys(jsonData).indexOf("root") !== -1) {
-            jsonData = jsonData["root"];
-          }
-          aceEditorInsertData(this.jsonEditorLeft.aceEditor, jsonData);
-        } catch (error) {
-          this.aceEditor.setValue(error.message);
-        }
-      },
-
-      // json 2 properties
-      jToP() {
-        this.opName = "jTop";
-        this.isBoxHidden.leftSection = false;
-        this.isBoxHidden.transSortBox = true;
-        this.isBoxHidden.jsonEditorRightBox = true;
-        this.isBoxHidden.aceEditorBox = false;
-        try {
-          const propArray = flattenJsonDataOrArray(LosslessJSON.parse(this.jsonEditorLeft.getText(), myJsonReviverLong));
-          const propStrs = [];
-          propArray.forEach(oneProp => {
-            Object.keys(oneProp).forEach(onePropKey => {
-              propStrs.push(cleanLongXML(`${onePropKey}=${oneProp[onePropKey]}`));
-            })
-          })
-          this.aceLanguage = "ace/mode/properties";
-          this.aceEditor.setValue(propStrs.join("\n"));
-        } catch (error) {
-          this.aceEditor.setValue(error.message);
-          throw error;
-        }
-      },
-      // properties 2 json
-      pToJ() {
-        this.opName = "pToJ";
-        this.isBoxHidden.leftSection = false;
-        this.isBoxHidden.transSortBox = true;
-        this.isBoxHidden.jsonEditorRightBox = true;
-        this.isBoxHidden.aceEditorBox = false;
-        try {
-          this.aceLanguage = "ace/mode/properties";
-          let propStr = this.aceEditor.getValue();
-          // 1.用 \n 把 str 拆分成 array
-          let propsList = propStr.split("\n");
-          const jsonData = propertiesToJson(propsList);
-          aceEditorInsertData(this.jsonEditorLeft.aceEditor, jsonData);
-        } catch (error) {
-          this.jsonEditorLeft.set(error.message);
-          throw error;
-        }
-      },
-      // json 2 http query
-      jToH() {
-        this.opName = "jToH";
-        this.isBoxHidden.leftSection = false;
-        this.isBoxHidden.transSortBox = true;
-        this.isBoxHidden.jsonEditorRightBox = true;
-        this.isBoxHidden.aceEditorBox = false;
-        try {
-          // let jsonData = this.jsonEditorLeft.get();
-          let jsonData = editorGet(this.jsonEditorLeft);
-          const propArray = flattenJsonDataOrArray(jsonData);
-          let queryStr = "";
-          propArray.forEach(oneProp => {
-            Object.keys(oneProp).forEach(key => {
-              let value = encodeURIComponent(oneProp[key]);
-              queryStr += `${key}=${value}&`;
-            })
-          })
-          queryStr = queryStr.slice(0, -1);
-          this.aceEditor.setValue(queryStr);
-        } catch (error) {
-          this.aceEditor.setValue(error.message);
-          throw error;
-        }
-      },
-      // http query 2 json
-      hToJ() {
-        this.opName = "hToJ";
-        this.isBoxHidden.leftSection = false;
-        this.isBoxHidden.transSortBox = true;
-        this.isBoxHidden.jsonEditorRightBox = true;
-        this.isBoxHidden.aceEditorBox = false;
-        try {
-          let queryStr = this.aceEditor.getValue();
-          let pairArray = queryStr.split("&");
-          const jsonData = decodeURIComponent(myJsonStringify(propertiesToJson(pairArray)));
-          this.setJsonEditorText(this.jsonEditorLeft, jsonData);
-        } catch (error) {
-          this.jsonEditorLeft.set(error.message);
-          throw error;
-        }
-      },
       // 切换aceEditor的mode
       switchAceEditorMode() {
         this.aceEditor.session.setMode(this.aceLanguage);
-      },
-      // 左右对换
-      leftRightSwap() {
-        const leftText = this.jsonEditorLeft.getText();
-        this.jsonEditorLeft.setText(this.jsonEditorRight.getText());
-        this.jsonEditorRight.setText(leftText);
-        this.jsonEditorLeft.aceEditor.setValue(this.jsonEditorLeft.getText());
-        this.jsonEditorRight.aceEditor.setValue(this.jsonEditorRight.getText());
       },
       // 防抖自动对比
       __debouncedAutoDiff() {
@@ -3116,168 +3085,45 @@
           if (!lineNum) {
             lineNum = 0;
           }
-          if (keys1.indexOf(lineNum) !== -1) {
-            this.jsonEditorLeft.aceEditor.scrollToLine(lineNum);
+
+          // 清除上一次的高亮
+          $(".diff-current-highlight").removeClass("diff-current-highlight");
+
+          // 确定是左还是右编辑器，滚动并高亮
+          let targetEditor, targetContainer;
+          if (keys1.indexOf(String(lineNum)) !== -1 || keys1.indexOf(lineNum) !== -1) {
+            targetEditor = this.jsonEditorLeft;
+            targetContainer = document.getElementById("jsonEditorLeft");
           } else {
-            this.jsonEditorRight.aceEditor.scrollToLine(lineNum);
+            targetEditor = this.jsonEditorRight;
+            targetContainer = document.getElementById("jsonEditorRight");
           }
+
+          // 滚动到目标行（居中显示 + 动画）
+          targetEditor.aceEditor.scrollToLine(lineNum, true, true, () => {
+            // 滚动完成后，给当前行加闪烁高亮
+            setTimeout(() => {
+              const $container = $(targetContainer);
+              const $lines = $container.find(".ace_line");
+              const aceFirstRow = targetEditor.aceEditor.getFirstVisibleRow();
+              const targetIndex = lineNum - aceFirstRow;
+              if ($lines[targetIndex]) {
+                $($lines[targetIndex]).addClass("diff-current-highlight");
+                // 2秒后自动移除高亮
+                setTimeout(() => {
+                  $($lines[targetIndex]).removeClass("diff-current-highlight");
+                }, 2000);
+              }
+            }, 100);
+          });
+
           this.jsonDiffLastIndex = index;
         }
-      },
-      // 把数据导出为文件
-      exportFile(editorName, fileExtensionName) {
-        this.opName = "exportFile";
-        let editorData;
-        if (editorName === 'left') {
-          editorData = this.jsonEditorLeft.aceEditor.getValue();
-        } else if (editorName === 'right') {
-          editorData = this.jsonEditorRight.aceEditor.getValue();
-        } else if (editorName === 'ace') {
-          editorData = this.aceEditor.getValue();
-        }
-        const time = new Date();
-        const timeInfo = (time.getFullYear() + '年' + (time.getMonth() + 1) + '月' + time.getDate() + '日' + time.getHours() + '-' + time.getMinutes() + '-' + time.getSeconds());
-        const exportFileName = "JsonTools导出" + editorName + "_" + timeInfo + "." + fileExtensionName
-        const filedir = utools.getPath('downloads');
-        const exportFilePath = window.path.join(filedir, exportFileName);
-
-        if (fileExtensionName !== "xlsx") {
-          // 创建一个可写流，写入到 output.txt 文件
-          const writeStream = window.fs.createWriteStream(exportFilePath, {
-            encoding: 'utf8',
-            // flags: 'a' // 如果想追加而不是覆盖，可以用 'a'（默认是 'w' 覆盖）
-          });
-          // 写入数据（可以多次调用 write()）
-          editorData.split('\n').forEach(line => {
-            writeStream.write(line + '\n');
-          });
-          // 写入完成后关闭流
-          writeStream.end();
-        } else {
-          let jsonData = JSON.parse(editorData);
-          if (jsonData) {
-            let headers = [];
-            let newJsonData = undefined;
-            let headerWs = undefined;
-            let ws = undefined;
-            if (dataType(jsonData) === "array") {
-              newJsonData = [];
-              headers = [Object.keys(jsonData[0])];
-              jsonData.forEach(element => {
-                let oneJson = {};
-                Object.keys(element).forEach(key => {
-                  const value = element[key];
-                  if (dataType(value) === "array" || dataType(value) === "object") {
-                    oneJson[key] = myJsonStringify(value);
-                  } else {
-                    oneJson[key] = value;
-                  }
-                });
-                newJsonData.push(oneJson);
-              });
-              headerWs = XLSX.utils.aoa_to_sheet(headers);
-              ws = window.XLSX.utils.sheet_add_json(headerWs, newJsonData, { skipHeader: true, origin: 'A2' });
-            } else if (dataType(jsonData) === "object") {
-              headers = [Object.keys(jsonData)];
-              newJsonData = {};
-              Object.keys(jsonData).forEach(key => {
-                const value = jsonData[key];
-                if (dataType(value) === "array" || dataType(value) === "object") {
-                  newJsonData[key] = myJsonStringify(value);
-                } else {
-                  newJsonData[key] = value;
-                }
-              });
-              headerWs = XLSX.utils.aoa_to_sheet(headers);
-              ws = window.XLSX.utils.sheet_add_json(headerWs, [newJsonData], { skipHeader: true, origin: 'A2' });
-            }
-            const wb = window.XLSX.utils.book_new();
-            window.XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
-            const time = new Date();
-            const timeInfo = (time.getFullYear() + '年' + (time.getMonth() + 1) + '月' + time.getDate() + '日' + time.getHours() + '-' + time.getMinutes() + '-' + time.getSeconds());
-            window.XLSX.writeFile(wb, exportFileName);
-          }
-        }
-        this.$message.success(`导出成功: ${exportFilePath}`);
       },
       // 设置 JSON 编辑器内容并自动格式化
       setJsonEditorText(editor, text) {
         editor.setText(text);
         this.jsonFormat(editor);
-      },
-
-      async importFileJson(file) {
-        const data = await this.__importFile(file);
-        this.setJsonEditorText(this.jsonEditorLeft, data);
-      },
-
-      async importFileJsonRight(file) {
-        const data = await this.__importFile(file);
-        this.setJsonEditorText(this.jsonEditorRight, data);
-      },
-
-      async importFileAce(file) {
-        const data = await this.__importFile(file);
-        this.aceEditor.setValue(data);
-      },
-
-      __importFile(file) {
-        return new Promise((resolve, reject) => {
-          this.opName = "importFileData";
-          // 错误情况判断
-          if (!file) {
-            reject(new Error('没有选择文件'));
-            return;
-          } else if (!/\.(xls|xlsx|txt|json|yaml|yml|xml|html|js|java|py|sql|properties)$/.test(file.name.toLowerCase())) {
-            this.$message.error('上传格式不正确，请上传: xls|xlsx|txt|json|yaml|yml|xml|html|js|java|py|sql|properties');
-            reject(new Error('不支持的文件格式'));
-            return;
-          }
-
-          if (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls')) {
-            const fileReader = new FileReader();  // 读取文件
-            fileReader.readAsArrayBuffer(file.raw);
-            fileReader.onload = (e) => {
-              try {
-                const data = e.target.result;  // 获取结果
-                // 获取所有表的信息
-                const workbook = window.XLSX.read(data, {
-                  type: 'binary'  // 以字符编码的方式解析？注意：这里使用ArrayBuffer，但XLSX.read支持arrayBuffer类型
-                });
-                // 获取第一张表的表名
-                const exlname = workbook.SheetNames[0];
-                // 转换成json数据
-                const fileContent = window.XLSX.utils.sheet_to_json(workbook.Sheets[exlname]); // 生成json表格内容
-                resolve(fileContent);
-              } catch (e) {
-                this.$message.error(`文件解析失败: ${e.message}`);
-                reject(e);
-              }
-            };
-            fileReader.onerror = (error) => {
-              this.$message.error(`文件读取失败: ${error.message}`);
-              reject(error);
-            };
-          } else {
-            // 对于非Excel文件，使用流式读取
-            // 注意：这里假设 file.raw.path 是有效的文件路径（在Electron或Node环境中）
-            const chunks = [];
-            const readStream = window.fs.createReadStream(file.raw.path, { encoding: 'utf8' });
-
-            readStream.on('data', (chunk) => {
-              chunks.push(chunk);
-            });
-
-            readStream.on('end', () => {
-              resolve(chunks.join('')); // 如果是文本文件，直接拼接字符串
-            });
-
-            readStream.on('error', (err) => {
-              this.$message.error(`文件读取失败: ${err.message}`);
-              reject(err);
-            });
-          }
-        });
       },
       // 内容美化
       beautifyContent() {
