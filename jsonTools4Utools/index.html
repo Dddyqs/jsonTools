@@ -92,11 +92,10 @@
           <div id="jsonMenu" class="editorMenu">
             <div class="editorMenuBtn" style="display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 4px; color: #e9f0e2; font-size: 11px; font-weight: bold;">左</div>
 
-<!-- 模式切换（code/tree）暂时屏蔽，等模式切换 bug 修复后再放开
             <el-button type="primary" size="mini" class="modeActive editorMenuBtn setModeCodeBtn"
               @click="setModeCode" style="margin-right: 0;">code</el-button>
             <el-button type="primary" size="mini" class="editorMenuBtn setModeTreeBtn" @click="setModeTree"
-              style="margin-left: 0;">tree</el-button> -->
+              style="margin-left: 0;">tree</el-button>
             <el-button v-if="jsonEditorLeftMode === 'code'" type="primary" size="mini"
               class="editorMenuBtn jsonFormatBtn" @click="jsonFormat">格式化</el-button>
             <el-button v-if="jsonEditorLeftMode === 'code'" type="primary" size="mini"
@@ -242,11 +241,10 @@
           <div id="jsonRightMenu" class="editorMenu">
             <div class="editorMenuBtn" style="display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 4px; color: #e9f0e2; font-size: 11px; font-weight: bold;">右</div>
 
-<!-- 模式切换（code/tree）暂时屏蔽，等模式切换 bug 修复后再放开
             <el-button type="primary" size="mini" class="modeActive editorMenuBtn setModeCodeBtn"
               @click="setModeCode" style="margin-right: 0;">code</el-button>
             <el-button type="primary" size="mini" class="editorMenuBtn setModeTreeBtn" @click="setModeTree"
-              style="margin-left: 0;">tree</el-button> -->
+              style="margin-left: 0;">tree</el-button>
             <el-button v-if="jsonEditorRightMode === 'code'" type="primary" size="mini"
               class="editorMenuBtn jsonFormatBtn" @click="jsonFormat">格式化</el-button>
             <el-button v-if="jsonEditorRightMode === 'code'" type="primary" size="mini"
@@ -1250,7 +1248,7 @@
         if (this._isSwitchingMode) return;
         this._isSwitchingMode = true;
 
-        const finish = () => { setTimeout(() => { this._isSwitchingMode = false; }, 500); };
+        const finish = () => { setTimeout(() => { this._isSwitchingMode = false; }, 800); };
 
         const doSwitchTree = (editor, isRight) => {
           const editorName = isRight ? "jsonEditorRight" : "jsonEditorLeft";
@@ -1292,6 +1290,10 @@
             }
           }
 
+          // ===== 第1.5步：额外保存文本备份，防止 get() 返回的数据不完整 =====
+          const backupText = myJsonStringify(rawData, null, 2);
+          console.log('[setModeTree] 备份数据长度:', backupText.length);
+
           // ===== 第2步：处理BigInt ======
           const safeData = this.__convertBigIntToString(rawData);
 
@@ -1332,25 +1334,46 @@
             if (isRight) { this.jsonEditorRight = newEditor; }
             else { this.jsonEditorLeft = newEditor; }
 
-            // 3e. 切到 tree 模式（此时编辑器是全新的，不会有 DOM 残留问题）
+            // 3e. 先切到 tree 模式，再设置数据（确保模式就绪后再写入）
             newEditor.setMode("tree");
-            newEditor.set(safeData);
 
-            // 3f. 更新状态
-            if (isRight) { this.jsonEditorRightMode = "tree"; }
-            else { this.jsonEditorLeftMode = "tree"; }
+            // 使用 setTimeout 确保 setMode 完成后再 set 数据
+            setTimeout(() => {
+              try {
+                newEditor.set(safeData);
+                console.log(`[setModeTree] ✓ ${editorName} 数据已设置到 tree 模式`);
+              } catch (setErr) {
+                console.error('[setModeTree] set() 失败，尝试 updateText 兜底:', setErr.message);
+                // 兜底：切回 code 模式用文本恢复
+                try {
+                  newEditor.setMode("code");
+                  newEditor.updateText(backupText);
+                  if (isRight) { this.jsonEditorRightMode = "code"; }
+                  else { this.jsonEditorLeftMode = "code"; }
+                  vm.$message.warning('tree 模式设置数据失败，已回退到 code 模式');
+                } catch (fallbackErr) {
+                  console.error('[setModeTree] 兜底也失败:', fallbackErr.message);
+                }
+              }
 
-            // 3g. 绑定事件
-            this.__addEditorWatchEvent(editorName);
+              // 3f. 更新状态
+              if (isRight) { this.jsonEditorRightMode = "tree"; }
+              else { this.jsonEditorLeftMode = "tree"; }
 
-            console.log(`[setModeTree] ✓ ${editorName} 已切换为 tree 模式（销毁重建方式）`);
+              // 3g. 绑定事件（在 set 数据之后绑定，避免 set 触发的 change 事件干扰）
+              vm.__addEditorWatchEvent(editorName);
+
+              console.log(`[setModeTree] ✓ ${editorName} 已切换为 tree 模式（销毁重建方式）`);
+            }, 50);
+
           } catch (err) {
             console.error('[setModeTree] ✗ 切换失败，回滚到 code:', err);
-            this.__rebuildEditor(editorName, elId, isRight, myJsonStringify(rawData, null, 2), rawData);
+            this.__rebuildEditor(editorName, elId, isRight, backupText, rawData);
             this.$message.warning('切换 tree 模式失败，已自动恢复 code 模式和原数据');
-          } finally {
             finish();
+            return;
           }
+          finish();
         };
 
         if ($(event.currentTarget).parents("#rightSection").length >= 1) {
