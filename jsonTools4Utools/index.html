@@ -1100,7 +1100,6 @@
 
       // 根据字段key排序
       sortKeysByLodash(data, key, order = "asc") {
-        let res;
         const cmp = (a, b) => {
           const va = a[key], vb = b[key];
           if (va < vb) return order === "asc" ? -1 : 1;
@@ -1108,12 +1107,9 @@
           return 0;
         };
         if (dataType(data) === "array") {
-          res = [...data].sort(cmp);
+          return [...data].sort(cmp);  // 返回整个排序后的数组
         } else if (dataType(data) === "object") {
-          res = [data].sort(cmp);
-        }
-        if (res && res.length > 0) {
-          return res[0];
+          return [data].sort(cmp)[0];  // 对象返回排序后的唯一元素
         }
       },
       // ====== BigInt 转字符串工具（tree模式不支持bigint）=====
@@ -1888,18 +1884,18 @@
         if (typeof value !== 'number' && typeof value !== 'string') return false;
         const num = Number(value);
         if (isNaN(num)) return false;
-        
+
         // 毫秒时间戳：13位，范围 1970-2100年
         // 秒时间戳：10位，范围 1970-2100年
         const now = Date.now();
         const msThreshold = 1000 * 60 * 60 * 24 * 365 * 50; // 50年
-        
-        // 毫秒时间戳
-        if (num > 1000000000000n && num < 10000000000000n) {
+
+        // 毫秒时间戳 (使用普通数字比较)
+        if (num > 1000000000000 && num < 10000000000000) {
           return Math.abs(num - now) < msThreshold;
         }
         // 秒时间戳
-        if (num > 1000000000n && num < 10000000000n) {
+        if (num > 1000000000 && num < 10000000000) {
           return Math.abs(num * 1000 - now) < msThreshold;
         }
         return false;
@@ -1908,9 +1904,9 @@
       formatTimestamp(value) {
         const num = Number(value);
         let ms = num;
-        
-        // 判断是秒还是毫秒
-        if (num < 10000000000n) {
+
+        // 判断是秒还是毫秒 (使用普通数字比较)
+        if (num < 10000000000) {
           ms = num * 1000; // 秒转毫秒
         }
         
@@ -2449,20 +2445,27 @@
                 nextJsonRightValue = myJsonStringify(JSONPath.JSONPath(nextJsonRightPath, jsonEditorRightData)[0])
               }
             } else {
-              const preJsonRightPath2 = jsonpathLineDictRightKeys[diffPathCurrentJsonEditorLeftIndex - 1];
-              if (preJsonRightPath2) {
-                preJsonRightPath = preJsonRightPath2;
-                preJsonRightValue = myJsonStringify(JSONPath.JSONPath(preJsonRightPath2, jsonEditorRightData)[0]);
+              // 添加边界检查，防止数组越界
+              if (diffPathCurrentJsonEditorLeftIndex > 0) {
+                const preJsonRightPath2 = jsonpathLineDictRightKeys[diffPathCurrentJsonEditorLeftIndex - 1];
+                if (preJsonRightPath2) {
+                  preJsonRightPath = preJsonRightPath2;
+                  preJsonRightValue = myJsonStringify(JSONPath.JSONPath(preJsonRightPath2, jsonEditorRightData)[0]);
+                }
               }
-              const nextJsonRightPath2 = jsonpathLineDictRightKeys[diffPathCurrentJsonEditorLeftIndex + 1];
-              if (nextJsonRightPath2) {
-                nextJsonRightPath = nextJsonRightPath2;
-                nextJsonRightValue = myJsonStringify(JSONPath.JSONPath(nextJsonRightPath2, jsonEditorRightData)[0]);
+              if (diffPathCurrentJsonEditorLeftIndex < jsonpathLineDictRightKeys.length - 1) {
+                const nextJsonRightPath2 = jsonpathLineDictRightKeys[diffPathCurrentJsonEditorLeftIndex + 1];
+                if (nextJsonRightPath2) {
+                  nextJsonRightPath = nextJsonRightPath2;
+                  nextJsonRightValue = myJsonStringify(JSONPath.JSONPath(nextJsonRightPath2, jsonEditorRightData)[0]);
+                }
               }
-              const currentJsonRightPath2 = jsonpathLineDictRightKeys[diffPathCurrentJsonEditorLeftIndex];
-              if (currentJsonRightPath2) {
-                currentJsonRightPath = currentJsonRightPath2;
-                currentJsonRightValue = myJsonStringify(JSONPath.JSONPath(currentJsonRightPath2, jsonEditorRightData)[0]);
+              if (diffPathCurrentJsonEditorLeftIndex >= 0 && diffPathCurrentJsonEditorLeftIndex < jsonpathLineDictRightKeys.length) {
+                const currentJsonRightPath2 = jsonpathLineDictRightKeys[diffPathCurrentJsonEditorLeftIndex];
+                if (currentJsonRightPath2) {
+                  currentJsonRightPath = currentJsonRightPath2;
+                  currentJsonRightValue = myJsonStringify(JSONPath.JSONPath(currentJsonRightPath2, jsonEditorRightData)[0]);
+                }
               }
             }
             // 如果上一个 或 下一个节点 是一样的，那么就是这个节点的key的名字不一样，来对比这个key的差异

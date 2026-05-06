@@ -1,6 +1,6 @@
 // 辨别数据类型（在 utils.js 之前定义，避免依赖问题）
 const dataType = function (data) {
-    if ((data === null) || data === undefined || typeof data === "null" || typeof data === "undefined") {
+    if (data === null || data === undefined) {
         return "null";
     } else if (typeof data === "string") {
         return "string";

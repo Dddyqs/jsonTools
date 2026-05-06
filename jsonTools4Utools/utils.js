@@ -201,9 +201,9 @@ const flattenJsonDataOrArray = function (jsonData, prefix = "", result = []) {
             }
         })
     } else if (dataType(jsonData) === "array") {
-        jsonData.forEach(oneData => {
+        jsonData.forEach((oneData, index) => {
             let resultOne = {};
-            const propName = prefix === "" ? jsonData.indexOf(oneData) : prefix + "." + jsonData.indexOf(oneData);
+            const propName = prefix === "" ? String(index) : prefix + "." + index;
             if (dataType(oneData) === "object") {
                 flattenJsonDataOrArray(oneData, propName, result);
             } else if (dataType(oneData) === "array") {
