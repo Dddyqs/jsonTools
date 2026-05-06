@@ -1098,6 +1098,71 @@
         }
       },
 
+      // 初始化窗口大小变化监听
+      initResizeListener() {
+        // 保存数据到变量，避免在 resize 时丢失
+        this._resizeHandler = () => {
+          const width = window.innerWidth;
+          const isVerticalMode = width < 768;
+
+          // 切换到竖屏模式时，保存当前数据
+          if (isVerticalMode && !this._wasVerticalMode) {
+            // 保存左右编辑器的数据
+            this._savedLeftData = this.jsonEditorLeft ? this.jsonEditorLeft.get() : null;
+            this._savedRightData = this.jsonEditorRight ? this.jsonEditorRight.get() : null;
+            this._savedLeftText = this.jsonEditorLeft ? this.jsonEditorLeft.getText() : '';
+            this._savedRightText = this.jsonEditorRight ? this.jsonEditorRight.getText() : '';
+            console.log('[Resize] 切换到竖屏模式，数据已保存');
+          }
+
+          // 从竖屏切换回横屏模式时，恢复数据
+          if (!isVerticalMode && this._wasVerticalMode) {
+            this.$nextTick(() => {
+              // 恢复左侧面板数据
+              if (this.jsonEditorLeft && this._savedLeftData !== null) {
+                try {
+                  this.jsonEditorLeft.set(this._savedLeftData);
+                  console.log('[Resize] 左侧面板数据已恢复');
+                } catch (e) {
+                  console.warn('[Resize] 恢复左侧数据失败:', e);
+                  // 尝试用文本恢复
+                  if (this._savedLeftText) {
+                    this.jsonEditorLeft.setText(this._savedLeftText);
+                  }
+                }
+              }
+              // 恢复右侧面板数据
+              if (this.jsonEditorRight && this._savedRightData !== null) {
+                try {
+                  this.jsonEditorRight.set(this._savedRightData);
+                  console.log('[Resize] 右侧面板数据已恢复');
+                } catch (e) {
+                  console.warn('[Resize] 恢复右侧数据失败:', e);
+                  // 尝试用文本恢复
+                  if (this._savedRightText) {
+                    this.jsonEditorRight.setText(this._savedRightText);
+                  }
+                }
+              }
+            });
+          }
+
+          this._wasVerticalMode = isVerticalMode;
+        };
+
+        // 初始化状态
+        this._wasVerticalMode = window.innerWidth < 768;
+
+        // 添加监听（使用防抖）
+        let resizeTimer = null;
+        window.addEventListener('resize', () => {
+          clearTimeout(resizeTimer);
+          resizeTimer = setTimeout(() => {
+            this._resizeHandler();
+          }, 100);
+        });
+      },
+
       // 根据字段key排序
       sortKeysByLodash(data, key, order = "asc") {
         const cmp = (a, b) => {
@@ -3193,6 +3258,16 @@
       this.initJsonDataByUtoolsData();
       this.initUtoolsData();
       this.initDrag();
+
+      // 监听窗口大小变化，处理竖屏/横屏切换
+      this.initResizeListener();
+    },
+
+    beforeDestroy() {
+      // 清理窗口大小监听
+      if (this._resizeHandler) {
+        window.removeEventListener('resize', this._resizeHandler);
+      }
     },
     watch: {
       // 监听查询输入，实时更新模式显示
