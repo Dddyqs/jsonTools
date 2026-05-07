@@ -664,14 +664,14 @@
       // 初始化数据，从 utools.db 读取
       initUtoolsData() {
         if (typeof utools !== "undefined") {
-          if (
-            utools.db.get("isBoxHidden")
-            && utools.db.get("isBoxHidden").data
-            && JSON.stringify(Object.fromEntries(buildPathMap(utools.db.get("isBoxHidden").data))) === JSON.stringify(Object.fromEntries(buildPathMap(this.isBoxHidden)))
-          ) {
-            this.isBoxHidden = utools.db.get("isBoxHidden").data;
-            // 初始化这里，默认把排序隐藏了
-            this.isBoxHidden.transSortBox = true;
+          const saved = utools.db.get("isBoxHidden");
+          if (saved && saved.data) {
+            // isBoxHidden 是简单的扁平对象，直接比较即可，无需 buildPathMap
+            if (JSON.stringify(saved.data) === JSON.stringify(this.isBoxHidden)) {
+              this.isBoxHidden = saved.data;
+              // 初始化这里，默认把排序隐藏了
+              this.isBoxHidden.transSortBox = true;
+            }
           }
         }
         this.hiddenBox();
@@ -797,9 +797,11 @@
         }
 
         // 监控粘贴操作，格式化json（因为有些json不规范，导致pathMap不准确）
+        let pasteTimer = null;
         editorObj.editor.aceEditor.on('paste', (delta) => {
           try {
-            setTimeout(() => {
+            clearTimeout(pasteTimer);
+            pasteTimer = setTimeout(() => {
               this.opName = 'paste';
               myJsonParse(editorObj.editor.aceEditor.getValue());
               if (editorName === "jsonEditorLeft") {
@@ -873,7 +875,10 @@
             if (!/ {0,}".*?": /g.test(newContent)) return;
           }
           try {
-            setTimeout(async () => {
+            // 使用防抖，避免快速输入时多次触发 buildPathMap 等重操作
+            if (!this._changeTimers) this._changeTimers = {};
+            if (this._changeTimers[editorName]) clearTimeout(this._changeTimers[editorName]);
+            this._changeTimers[editorName] = setTimeout(async () => {
               // ★ JSON 对比模式下，不要重新构建路径映射，避免滑动时数据混乱
               if (this.opName === "jsonDiff") {
                 // 对比模式下只清除标记，不重新构建路径
@@ -913,18 +918,13 @@
         });
         let scrollTimer = null;
 
-        // 渲染jsonDiff
-        editorObj.editor.aceEditor.session.on('changeScrollTop', (delta) => {
-          this.diffRender();
-          // 清除之前的计时器
+        // 渲染jsonDiff（使用防抖，避免快速滚动时频繁触发重渲染）
+        editorObj.editor.aceEditor.session.on('changeScrollTop', () => {
           clearTimeout(scrollTimer);
-
-          // 设置新的计时器
           scrollTimer = setTimeout(() => {
-            // 在这里执行滚动结束后的操作
             this.__syncScroll(editorObj.editor);
             this.diffRender();
-          }, 100);
+          }, 80);
         });
 
         // 监控折叠事件，渲染jsonDiff
@@ -1153,14 +1153,15 @@
         // 初始化状态
         this._wasVerticalMode = window.innerWidth < 768;
 
-        // 添加监听（使用防抖）
+        // 添加监听（使用防抖，保存引用以便销毁时移除）
         let resizeTimer = null;
-        window.addEventListener('resize', () => {
+        this._resizeListener = () => {
           clearTimeout(resizeTimer);
           resizeTimer = setTimeout(() => {
             this._resizeHandler();
           }, 100);
-        });
+        };
+        window.addEventListener('resize', this._resizeListener);
       },
 
       // 根据字段key排序
@@ -3263,9 +3264,17 @@
 
     beforeDestroy() {
       // 清理窗口大小监听
-      if (this._resizeHandler) {
-        window.removeEventListener('resize', this._resizeHandler);
+      if (this._resizeListener) {
+        window.removeEventListener('resize', this._resizeListener);
       }
+      // 清理自动对比定时器
+      if (this._autoDiffTimer) {
+        clearTimeout(this._autoDiffTimer);
+      }
+      // 销毁编辑器实例（会同时清理 Ace 事件监听）
+      try { this.jsonEditorLeft && this.jsonEditorLeft.destroy(); } catch(e) {}
+      try { this.jsonEditorRight && this.jsonEditorRight.destroy(); } catch(e) {}
+      try { this.aceEditor && this.aceEditor.destroy(); } catch(e) {}
     },
     watch: {
       // 监听查询输入，实时更新模式显示

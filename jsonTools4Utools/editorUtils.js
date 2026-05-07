@@ -1,21 +1,23 @@
 // 辨别数据类型（在 utils.js 之前定义，避免依赖问题）
+// 优化：使用 typeof + Array.isArray 替代 LosslessJSON.stringify，避免序列化开销
 const dataType = function (data) {
     if (data === null || data === undefined) {
         return "null";
     } else if (typeof data === "string") {
         return "string";
-    } else if (typeof data === "number" && LosslessJSON.stringify(data).indexOf(".") === -1 && data.toString().length <= 16) {
+    } else if (typeof data === "number") {
+        const s = data.toString();
+        if (s.length > 16) return "bigint";
+        if (s.includes(".") || s.includes("e") || s.includes("E")) return "number";
         return "int";
-    } else if (typeof data === "bigint" || (typeof data === "number" && data.toString().length > 16)) {
+    } else if (typeof data === "bigint") {
         return "bigint";
-    } else if (typeof data === "number" && LosslessJSON.stringify(data).indexOf(".") !== -1) {
-        return "number";
     } else if (typeof data === "boolean") {
         return "boolean";
-    } else if (typeof data === "object" && LosslessJSON.stringify(data).indexOf("{") === 0) {
-        return "object";
-    } else if (typeof data === "object" && LosslessJSON.stringify(data).indexOf("[") === 0) {
+    } else if (Array.isArray(data)) {
         return "array";
+    } else if (typeof data === "object") {
+        return "object";
     } else {
         return "error";
     }
