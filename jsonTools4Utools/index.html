@@ -874,6 +874,13 @@
           }
           try {
             setTimeout(async () => {
+              // ★ JSON 对比模式下，不要重新构建路径映射，避免滑动时数据混乱
+              if (this.opName === "jsonDiff") {
+                // 对比模式下只清除标记，不重新构建路径
+                this.opName = "";
+                return;
+              }
+
               const jsonStr = myJsonStringify(LosslessJSON.parse(editorObj.editor.getText()));
               // editorObj.editor.updateText(jsonStr);
               // aceEditorInsertData(editorObj.editor.aceEditor, jsonStr);
@@ -896,11 +903,6 @@
                 }
               } catch (error) {
               }
-              // 更新操作名称，可以清除jsonDiff的标记
-              if (this.opName === "jsonDiff") {
-                this.opName = "";
-              }
-              // 对比模式下自动重新对比
               if (this.jsonDiffCount > 0 || this.opName === "jsonDiff") {
                 this.__debouncedAutoDiff();
               }
@@ -2900,10 +2902,11 @@
       __getEditorLines(editor) {
         const minRow = editor.aceEditor.renderer.getFirstVisibleRow();
         const maxRow = editor.aceEditor.renderer.getLastVisibleRow();
-        // 行号索引的元素
-        const lineIndexEls = document.querySelectorAll(`.${editor.getName()} .ace_gutter-cell`);
+        // 行号索引的元素 - 只获取当前编辑器容器内的，避免左右编辑器互相干扰
+        const containerSelector = editor.getName() === 'jsonEditorRight' ? '#jsonEditorRight' : '#jsonEditorLeft';
+        const lineIndexEls = document.querySelectorAll(`${containerSelector} .ace_gutter-cell`);
         let lineNumbers = [];
-        lineIndexEls.forEach((lineIndexEl, index) => {
+        lineIndexEls.forEach((lineIndexEl) => {
           const lineInt = Number(lineIndexEl.innerText);
           // 这个数可能不在显示范围内，所以要判断一下
           if (lineInt >= minRow + 1 && lineInt <= maxRow + 1) {
@@ -2913,166 +2916,138 @@
         return lineNumbers;
       },
 
+      // 清理所有 diff 相关的样式和修改，避免重复渲染导致数据混乱
+      __clearDiffClass() {
+        // 清理左侧编辑器
+        const leftContainer = document.querySelector('#jsonEditorLeft');
+        if (leftContainer) {
+          leftContainer.querySelectorAll('.removeDiffLine, .addDiffLine, .modifyDiffLine, .removeDiffStr, .addDiffStr, .modifyDiffStr').forEach(el => {
+            $(el).removeClass('removeDiffLine addDiffLine modifyDiffLine removeDiffStr addDiffStr modifyDiffStr');
+          });
+          leftContainer.querySelectorAll('#nullValue').forEach(el => el.remove());
+        }
+
+        // 清理右侧编辑器
+        const rightContainer = document.querySelector('#jsonEditorRightBox');
+        if (rightContainer) {
+          rightContainer.querySelectorAll('.removeDiffLine, .addDiffLine, .modifyDiffLine, .removeDiffStr, .addDiffStr, .modifyDiffStr').forEach(el => {
+            $(el).removeClass('removeDiffLine addDiffLine modifyDiffLine removeDiffStr addDiffStr modifyDiffStr');
+          });
+          rightContainer.querySelectorAll('#nullValue').forEach(el => el.remove());
+        }
+      },
+
       // 修改 tree 的class 为 diff 之后的数据
       diffRender() {
-        if (this.opName === "jsonDiff") {
-          // 0. 先获取editor当前视图内的行
+        if (this.opName !== "jsonDiff") return;
 
-          // 1.先渲染jsonEditorLeft的diff数据
-          const jsonEditorLeftLineNumbers = this.__getEditorLines(this.jsonEditorLeft);
-          // 1.1 获取组
-          const jsonGroupEls = document.querySelectorAll("#jsonEditorLeft .ace_line_group");
-          for (let i = 0; i < jsonGroupEls.length; i++) {
-            const groupEl = jsonGroupEls[i];
-            const lineNum = jsonEditorLeftLineNumbers[i];
-            if (Object.keys(this.jsonEditorLeftDiffLineData).indexOf(`${lineNum}`) !== -1) {
-              const lineData = this.jsonEditorLeftDiffLineData[`${lineNum}`];
-              const lineELs = $(groupEl).find(".ace_line");
-              // 1.2 先把行给渲染了
-              if (lineData.classNameScope !== "value") {
-                lineELs.addClass(lineData.diffResClassName);
-              }
+        // ★ 先清理旧的 diff 样式，避免重复渲染导致数据混乱
+        this.__clearDiffClass();
 
-              // 1.3 key只有一个数据，把key渲染了
-              let keyEls = $(groupEl).find(".ace_variable");
-              if (keyEls.length > 0 && lineData.keyInnerHtml) {
-                $(keyEls[0]).html(lineData.keyInnerHtml);
-              }
+        // 1. 渲染 jsonEditorLeft 的 diff 数据
+        this.__renderEditorDiff(this.jsonEditorLeft, this.jsonEditorLeftDiffLineData, 'remove');
 
-              if (lineData.classNameScope === "value") {
-                // 1.4 现在渲染value
-                // 1.4.1 获取value的元素
-                // null值需要特殊处理
-                if (lineData.jsonDataType === "null") {
-                  const originalHtml = $(groupEl).html();
-                  const newHtml = originalHtml.replace(": null", ": ");
-                  $(groupEl).html(newHtml);
-                  if ($(groupEl).find("#nullValue").length === 0) {
-                    $(groupEl).find(".ace_operator").before("<span id=\"nullValue\" class=\"replaceDiffLine\">null</span>");
-                  }
-                }
+        // 2. 渲染 jsonEditorRight 的 diff 数据
+        this.__renderEditorDiff(this.jsonEditorRight, this.jsonEditorRightDiffLineData, 'add');
+      },
 
-                let valueEls = [];
-                let valueTexts = []
+      // 渲染单个编辑器的 diff 数据
+      __renderEditorDiff(editor, diffLineData, diffType) {
+        const containerId = editor.getName() === 'jsonEditorRight' ? '#jsonEditorRightBox' : '#jsonEditorLeft';
+        const wrapStart = diffType === 'remove'
+          ? "<span class=\"removeDiffStr\" contenteditable=\"true\">"
+          : "<span class=\"addDiffStr\" contenteditable=\"true\">";
+        const wrapEnd = "</span>";
 
-                valueEls = $(groupEl).find("div > span:not(.ace_indent-guide):not(.ace_variable):not(.ace_operator)");
+        // 获取所有行组元素
+        const groupEls = document.querySelectorAll(`${containerId} .ace_line_group`);
 
-                Array.from(valueEls).forEach((valueEl, index) => {
-                  let valueText = $(valueEl).text();
-                  // string 把首位的双引号去掉
-                  if (lineData.jsonDataType === "string" && index === 0 && valueText.startsWith("\"")) {
-                    valueText = valueText.substring(1);
-                  }
-                  if (lineData.jsonDataType === "string" && index === valueEls.length - 1 && valueText.endsWith("\"")) {
-                    valueText = valueText.substring(0, valueText.length - 1);
-                  }
-                  valueTexts.push(valueText);
-                  const valueElClass = $(valueEl).attr("class");
-                  if (valueElClass.indexOf("Diff") === -1) {
-                    $(valueEl).addClass(lineData.diffResClassName);
-                  }
-                });
+        groupEls.forEach((groupEl) => {
+          // 从 DOM 中直接读取行号，避免索引错位
+          const lineNumEl = groupEl.querySelector('.ace_gutter-cell');
+          if (!lineNumEl) return;
 
-                // 再渲染value的差异
-                const newTextList = this.__replaceByWrapText(valueTexts, lineData.valueDiffDatas, "<span class=\"removeDiffStr\" contenteditable=\"true\">", "</span>");
-                if (newTextList.length > 0) {
-                  Array.from(valueEls).forEach((valueEl, index) => {
-                    if (index === 0 && index === valueEls.length - 1 && lineData.jsonDataType === "string") {
-                      $(valueEl).html(`"${newTextList[index]}"`);
-                    } else if (index === 0 && lineData.jsonDataType === "string") {
-                      $(valueEl).html(`"${newTextList[index]}`);
-                    } else if (index === valueEls.length - 1 && lineData.jsonDataType === "string") {
-                      $(valueEl).html(`${newTextList[index]}"`);
-                    } else {
-                      $(valueEl).html(`${newTextList[index]}`);
-                    }
-                  });
-                } else {
-                  if (lineData.jsonDataType === "string" && lineData.jsonDataType !== lineData.otherSideDataType) {
-                    $(valueEls[0]).html(`<span class="removeDiffStr" contenteditable="true">"</span>${escapeHtml(lineData.jsonData)}<span class="removeDiffStr" contenteditable="true">"</span>`);
-                  }
-                }
-              }
+          const lineNum = Number(lineNumEl.innerText);
+          if (isNaN(lineNum)) return;
+
+          const lineData = diffLineData[lineNum];
+          if (!lineData) return;
+
+          const lineELs = $(groupEl).find(".ace_line");
+
+          // 渲染行样式
+          if (lineData.classNameScope !== "value") {
+            lineELs.addClass(lineData.diffResClassName);
+          }
+
+          // 渲染 key
+          const keyEls = $(groupEl).find(".ace_variable");
+          if (keyEls.length > 0 && lineData.keyInnerHtml) {
+            $(keyEls[0]).html(lineData.keyInnerHtml);
+          }
+
+          // 渲染 value
+          if (lineData.classNameScope === "value") {
+            this.__renderValueDiff(groupEl, lineData, wrapStart, wrapEnd);
+          }
+        });
+      },
+
+      // 渲染 value 的差异
+      __renderValueDiff(groupEl, lineData, wrapStart, wrapEnd) {
+        // null 值特殊处理
+        if (lineData.jsonDataType === "null") {
+          const originalHtml = $(groupEl).html();
+          const newHtml = originalHtml.replace(": null", ": ");
+          $(groupEl).html(newHtml);
+          if ($(groupEl).find("#nullValue").length === 0) {
+            $(groupEl).find(".ace_operator").before("<span id=\"nullValue\" class=\"replaceDiffLine\">null</span>");
+          }
+        }
+
+        const valueEls = $(groupEl).find("div > span:not(.ace_indent-guide):not(.ace_variable):not(.ace_operator)");
+        if (valueEls.length === 0) return;
+
+        const valueTexts = Array.from(valueEls).map((valueEl, index) => {
+          let valueText = $(valueEl).text();
+          // string 去掉首尾双引号
+          if (lineData.jsonDataType === "string") {
+            if (index === 0 && valueText.startsWith("\"")) {
+              valueText = valueText.substring(1);
+            }
+            if (index === valueEls.length - 1 && valueText.endsWith("\"")) {
+              valueText = valueText.substring(0, valueText.length - 1);
             }
           }
 
-          // 2.再渲染jsonEditorRight的diff数据
-          const jsonEditorRightLineNumbers = this.__getEditorLines(this.jsonEditorRight);
-          // 2.1 获取组
-          const jsonRightGroupEls = document.querySelectorAll("#jsonEditorRightBox .ace_line_group");
-          for (let i = 0; i < jsonRightGroupEls.length; i++) {
-            const groupEl = jsonRightGroupEls[i];
-            const lineNum = jsonEditorRightLineNumbers[i];
-            if (Object.keys(this.jsonEditorRightDiffLineData).indexOf(`${lineNum}`) !== -1) {
-              const lineData = this.jsonEditorRightDiffLineData[`${lineNum}`];
-              const lineELs = $(groupEl).find(".ace_line");
-              // 1.2 先把行给渲染了
-              if (lineData.classNameScope !== "value") {
-                lineELs.addClass(lineData.diffResClassName);
-              }
-
-              // 1.3 key只有一个数据，把key渲染了
-              let keyEls = $(groupEl).find(".ace_variable");
-              if (keyEls.length > 0 && lineData.keyInnerHtml) {
-                $(keyEls[0]).html(lineData.keyInnerHtml);
-              }
-
-              if (lineData.classNameScope === "value") {
-                // 1.4 现在渲染value
-                // 1.4.1 获取value的元素
-                // null值需要特殊处理
-                if (lineData.jsonDataType === "null") {
-                  const originalHtml = $(groupEl).html();
-                  const newHtml = originalHtml.replace(": null", ": ");
-                  $(groupEl).html(newHtml);
-                  if ($(groupEl).find("#nullValue").length === 0) {
-                    $(groupEl).find(".ace_operator").before("<span id=\"nullValue\" class=\"replaceDiffLine\">null</span>");
-                  }
-                }
-
-                let valueEls = [];
-                let valueTexts = []
-
-                valueEls = $(groupEl).find("div > span:not(.ace_indent-guide):not(.ace_variable):not(.ace_operator)");
-
-                Array.from(valueEls).forEach((valueEl, index) => {
-                  let valueText = $(valueEl).text();
-                  // string 把首位的双引号去掉
-                  if (lineData.jsonDataType === "string" && index === 0 && valueText.startsWith("\"")) {
-                    valueText = valueText.substring(1);
-                  }
-                  if (lineData.jsonDataType === "string" && index === valueEls.length - 1 && valueText.endsWith("\"")) {
-                    valueText = valueText.substring(0, valueText.length - 1);
-                  }
-                  valueTexts.push(valueText);
-                  const valueElClass = $(valueEl).attr("class");
-                  if (valueElClass.indexOf("Diff") === -1) {
-                    $(valueEl).addClass(lineData.diffResClassName);
-                  }
-                });
-
-                // 再渲染value的差异
-                const newTextList = this.__replaceByWrapText(valueTexts, lineData.valueDiffDatas, "<span class=\"addDiffStr\" contenteditable=\"true\">", "</span>");
-                if (newTextList.length > 0) {
-                  Array.from(valueEls).forEach((valueEl, index) => {
-                    if (index === 0 && index === valueEls.length - 1 && lineData.jsonDataType === "string") {
-                      $(valueEl).html(`"${newTextList[index]}"`);
-                    } else if (index === 0 && lineData.jsonDataType === "string") {
-                      $(valueEl).html(`"${newTextList[index]}`);
-                    } else if (index === valueEls.length - 1 && lineData.jsonDataType === "string") {
-                      $(valueEl).html(`${newTextList[index]}"`);
-                    } else {
-                      $(valueEl).html(`${newTextList[index]}`);
-                    }
-                  });
-                } else {
-                  if (lineData.jsonDataType === "string" && lineData.jsonDataType !== lineData.otherSideDataType) {
-                    $(valueEls[0]).html(`<span class="addDiffStr" contenteditable="true">"</span>${escapeHtml(lineData.jsonData)}<span class="addDiffStr" contenteditable="true">"</span>`);
-                  }
-                }
-              }
-            }
+          const valueElClass = $(valueEl).attr("class") || '';
+          if (valueElClass.indexOf("Diff") === -1) {
+            $(valueEl).addClass(lineData.diffResClassName);
           }
+          return valueText;
+        });
+
+        // 渲染差异
+        const newTextList = this.__replaceByWrapText(valueTexts, lineData.valueDiffDatas, wrapStart, wrapEnd);
+        if (newTextList.length > 0) {
+          Array.from(valueEls).forEach((valueEl, index) => {
+            const text = newTextList[index];
+            if (lineData.jsonDataType === "string") {
+              if (index === 0 && index === valueEls.length - 1) {
+                $(valueEl).html(`"${text}"`);
+              } else if (index === 0) {
+                $(valueEl).html(`"${text}`);
+              } else if (index === valueEls.length - 1) {
+                $(valueEl).html(`${text}"`);
+              } else {
+                $(valueEl).html(`${text}`);
+              }
+            } else {
+              $(valueEl).html(`${text}`);
+            }
+          });
+        } else if (lineData.jsonDataType === "string" && lineData.jsonDataType !== lineData.otherSideDataType) {
+          $(valueEls[0]).html(`${wrapStart}"${wrapEnd}${escapeHtml(lineData.jsonData)}${wrapStart}"${wrapEnd}`);
         }
       },
 
