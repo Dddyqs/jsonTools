@@ -476,6 +476,19 @@
       }
     },
     methods: {
+      // 工具方法：判断事件来自左侧还是右侧编辑器
+      // 返回 { isRight: boolean, editor: Object, editorName: string, elId: string }
+      __getEditorFromEvent(event) {
+        const isRight = event && event.currentTarget && 
+          (event.currentTarget.closest('#rightSection') !== null);
+        return {
+          isRight,
+          editor: isRight ? this.jsonEditorRight : this.jsonEditorLeft,
+          editorName: isRight ? "jsonEditorRight" : "jsonEditorLeft",
+          elId: isRight ? "jsonEditorRight" : "jsonEditorLeft"
+        };
+      },
+
       // 自动检测查询模式
       detectQueryMode(queryStr) {
         const str = queryStr.trim();
@@ -1183,10 +1196,7 @@
         const finish = () => { setTimeout(() => { this._isSwitchingMode = false; }, 300); };
 
         try {
-          const isRight = $(event.currentTarget).parents("#rightSection").length >= 1;
-          const editor = isRight ? this.jsonEditorRight : this.jsonEditorLeft;
-          const editorName = isRight ? "jsonEditorRight" : "jsonEditorLeft";
-          const elId = isRight ? "jsonEditorRight" : "jsonEditorLeft";
+          const { isRight, editor, editorName, elId } = this.__getEditorFromEvent(event);
 
           // 取数据
           let backupText = '';
@@ -1413,11 +1423,8 @@
           finish();
         };
 
-        if ($(event.currentTarget).parents("#rightSection").length >= 1) {
-          doSwitchTree(this.jsonEditorRight, true);
-        } else {
-          doSwitchTree(this.jsonEditorLeft, false);
-        }
+        const { isRight, editor } = this.__getEditorFromEvent(event);
+        doSwitchTree(editor, isRight);
       },
 
       // 彻底重建编辑器（用于回滚：切换失败时恢复为 code 模式的全新编辑器）
@@ -1491,62 +1498,36 @@
       },
       // JSON转义
       toJson(event) {
-        if ($(event.currentTarget).parents("#leftSection").length >= 1) {
-          let jsonStr = myJsonStringify(LosslessJSON.parse(this.jsonEditorLeft.getText()), null, 0);
-          if (jsonStr) {
-            this.jsonEditorLeft.setText(myJsonStringify(jsonStr));
-          }
-        } else {
-          let jsonStr = myJsonStringify(LosslessJSON.parse(this.jsonEditorRight.getText()), null, 0);
-          if (jsonStr) {
-            this.jsonEditorRight.setText(myJsonStringify(jsonStr));
-          }
+        const { editor } = this.__getEditorFromEvent(event);
+        let jsonStr = myJsonStringify(LosslessJSON.parse(editor.getText()), null, 0);
+        if (jsonStr) {
+          editor.setText(myJsonStringify(jsonStr));
         }
       },
       // JSON反转义
       toObject(event) {
-        if ($(event.currentTarget).parents("#leftSection").length >= 1) {
-          let jsonData = LosslessJSON.parse(this.jsonEditorLeft.getText());
-          if (jsonData && dataType(jsonData) === "string") {
-            this.jsonEditorLeft.setText(myJsonStringify(LosslessJSON.parse(jsonData)));
-          } else {
-            this.jsonEditorLeft.setText(myJsonStringify(jsonData));
-          }
+        const { editor } = this.__getEditorFromEvent(event);
+        let jsonData = LosslessJSON.parse(editor.getText());
+        if (jsonData && dataType(jsonData) === "string") {
+          editor.setText(myJsonStringify(LosslessJSON.parse(jsonData)));
         } else {
-          let jsonRightData = LosslessJSON.parse(this.jsonEditorRight.getText());
-          if (jsonRightData && dataType(jsonRightData) === "string") {
-            this.jsonEditorRight.setText(myJsonStringify(LosslessJSON.parse(jsonRightData)));
-          } else {
-            this.jsonEditorRight.setText(myJsonStringify(jsonRightData));
-          }
+          editor.setText(myJsonStringify(jsonData));
         }
       },
       // JSON转义并复制
       toJsonAndCopy(event) {
         let result = '';
         try {
-          if ($(event.currentTarget).parents("#leftSection").length >= 1) {
-            const text = this.jsonEditorLeft.getText();
-            if (!text || text.trim() === '') {
-              this.$message.warning('内容为空');
-              return;
-            }
-            let jsonStr = myJsonStringify(LosslessJSON.parse(text), null, 0);
-            if (jsonStr) {
-              result = myJsonStringify(jsonStr);
-              this.jsonEditorLeft.setText(result);
-            }
-          } else {
-            const text = this.jsonEditorRight.getText();
-            if (!text || text.trim() === '') {
-              this.$message.warning('内容为空');
-              return;
-            }
-            let jsonStr = myJsonStringify(LosslessJSON.parse(text), null, 0);
-            if (jsonStr) {
-              result = myJsonStringify(jsonStr);
-              this.jsonEditorRight.setText(result);
-            }
+          const { editor } = this.__getEditorFromEvent(event);
+          const text = editor.getText();
+          if (!text || text.trim() === '') {
+            this.$message.warning('内容为空');
+            return;
+          }
+          let jsonStr = myJsonStringify(LosslessJSON.parse(text), null, 0);
+          if (jsonStr) {
+            result = myJsonStringify(jsonStr);
+            editor.setText(result);
           }
           if (result) {
             if (typeof utools !== "undefined") {
@@ -1568,33 +1549,19 @@
       toObjectAndCopy(event) {
         let result = '';
         try {
-          if ($(event.currentTarget).parents("#leftSection").length >= 1) {
-            const text = this.jsonEditorLeft.getText();
-            if (!text || text.trim() === '') {
-              this.$message.warning('内容为空');
-              return;
-            }
-            let jsonData = LosslessJSON.parse(text);
-            if (jsonData && dataType(jsonData) === "string") {
-              result = myJsonStringify(LosslessJSON.parse(jsonData));
-            } else {
-              result = myJsonStringify(jsonData);
-            }
-            this.jsonEditorLeft.setText(result);
-          } else {
-            const text = this.jsonEditorRight.getText();
-            if (!text || text.trim() === '') {
-              this.$message.warning('内容为空');
-              return;
-            }
-            let jsonRightData = LosslessJSON.parse(text);
-            if (jsonRightData && dataType(jsonRightData) === "string") {
-              result = myJsonStringify(LosslessJSON.parse(jsonRightData));
-            } else {
-              result = myJsonStringify(jsonRightData);
-            }
-            this.jsonEditorRight.setText(result);
+          const { editor } = this.__getEditorFromEvent(event);
+          const text = editor.getText();
+          if (!text || text.trim() === '') {
+            this.$message.warning('内容为空');
+            return;
           }
+          let jsonData = LosslessJSON.parse(text);
+          if (jsonData && dataType(jsonData) === "string") {
+            result = myJsonStringify(LosslessJSON.parse(jsonData));
+          } else {
+            result = myJsonStringify(jsonData);
+          }
+          editor.setText(result);
           if (result) {
             if (typeof utools !== "undefined") {
               utools.copyText(result);
@@ -2129,34 +2096,20 @@
       },
       // 收缩JSON
       foldAll(event) {
-        if ($(event.currentTarget).parents("#leftSection").length >= 1) {
-          if (this.jsonEditorLeft.getMode() === "code") {
-            this.jsonEditorLeft.aceEditor.session.foldAll();
-          } else if (this.jsonEditorLeft.getMode() === "tree") {
-            this.jsonEditorLeft.collapseAll();
-          }
-        } else {
-          if (this.jsonEditorRight.getMode() === "code") {
-            this.jsonEditorRight.aceEditor.session.foldAll();
-          } else if (this.jsonEditorRight.getMode() === "tree") {
-            this.jsonEditorRight.collapseAll();
-          }
+        const { editor } = this.__getEditorFromEvent(event);
+        if (editor.getMode() === "code") {
+          editor.aceEditor.session.foldAll();
+        } else if (editor.getMode() === "tree") {
+          editor.collapseAll();
         }
       },
       // 展开JSON
       unfold(event) {
-        if ($(event.currentTarget).parents("#leftSection").length >= 1) {
-          if (this.jsonEditorLeft.getMode() === "code") {
-            this.jsonEditorLeft.aceEditor.session.unfold();
-          } else if (this.jsonEditorLeft.getMode() === "tree") {
-            this.jsonEditorLeft.expandAll();
-          }
-        } else {
-          if (this.jsonEditorRight.getMode() === "code") {
-            this.jsonEditorRight.aceEditor.session.unfold();
-          } else if (this.jsonEditorRight.getMode() === "tree") {
-            this.jsonEditorRight.expandAll();
-          }
+        const { editor } = this.__getEditorFromEvent(event);
+        if (editor.getMode() === "code") {
+          editor.aceEditor.session.unfold();
+        } else if (editor.getMode() === "tree") {
+          editor.expandAll();
         }
       },
       __getTransJsonpaths(jsonpaths, removeList = true) {
@@ -2267,46 +2220,27 @@
           const realQueryOptions = this.__getRealJmesQueryOptions(false);
           // 有可能是切换左右JSON，就重置一下基础路径
           this.queryOptions.path.field = "";
-          if ($(event.currentTarget).parents("#leftSection").length >= 1) {
-            this.transJsonEditorName = "JSON左";
-            // 不修改 jsonEditorActive，保持用户手动选择的状态
-            this.transPaths = await this.__getTransJsonpaths(this.jsonpathLeftMap, false);
-            await this.__updateTransJsonpaths(this.jsonEditorLeft.get(), realQueryOptions);
-          } else if ($(event.currentTarget).parents("#rightSection").length >= 1) {
-            this.transJsonEditorName = "JSON右";
-            // 不修改 jsonEditorActive，保持用户手动选择的状态
-            this.transPaths = await this.__getTransJsonpaths(this.jsonpathRightMap, false);
-            await this.__updateTransJsonpaths(this.jsonEditorRight.get(), realQueryOptions);
-          }
+          const { isRight, editor } = this.__getEditorFromEvent(event);
+          this.transJsonEditorName = isRight ? "JSON右" : "JSON左";
+          // 不修改 jsonEditorActive，保持用户手动选择的状态
+          const pathMap = isRight ? this.jsonpathRightMap : this.jsonpathLeftMap;
+          this.transPaths = await this.__getTransJsonpaths(pathMap, false);
+          await this.__updateTransJsonpaths(editor.get(), realQueryOptions);
         } else if (event.currentTarget.innerText === "排序") {
           this.transOrSort = 'sort';
           this.sortPaths = ["all"];
-          let jsonData;
-          if ($(event.currentTarget).parents("#leftSection").length >= 1) {
-            this.transJsonEditorName = "JSON左";
-            // 不修改 jsonEditorActive，保持用户手动选择的状态
-            jsonData = this.jsonEditorLeft.get();
-            for (const [lineNum, jsonpath] of this.jsonpathLeftMap) {
-              // 使用安全函数替代 eval()
-              const pathArray = JSONPath.JSONPath.toPathArray(jsonpath).slice(1);
-              const pathStr = pathArray.map(p => `[${typeof p === 'number' ? p : `"${p}"`}]`).join('');
-              const targetData = safeGet(jsonData, pathStr);
-              if (dataType(targetData) === "object" && !this.sortPaths.includes(jsonpath)) {
-                this.sortPaths.push(jsonpath);
-              }
-            }
-          } else if ($(event.currentTarget).parents("#rightSection").length >= 1) {
-            this.transJsonEditorName = "JSON右";
-            // 不修改 jsonEditorActive，保持用户手动选择的状态
-            jsonData = this.jsonEditorRight.get();
-            for (const [lineNum, jsonpath] of this.jsonpathRightMap) {
-              // 使用安全函数替代 eval()
-              const pathArray = JSONPath.JSONPath.toPathArray(jsonpath).slice(1);
-              const pathStr = pathArray.map(p => `[${typeof p === 'number' ? p : `"${p}"`}]`).join('');
-              const targetData = safeGet(jsonData, pathStr);
-              if (dataType(targetData) === "object" && !this.sortPaths.includes(jsonpath)) {
-                this.sortPaths.push(jsonpath);
-              }
+          const { isRight, editor } = this.__getEditorFromEvent(event);
+          this.transJsonEditorName = isRight ? "JSON右" : "JSON左";
+          // 不修改 jsonEditorActive，保持用户手动选择的状态
+          const jsonData = editor.get();
+          const pathMap = isRight ? this.jsonpathRightMap : this.jsonpathLeftMap;
+          for (const [lineNum, jsonpath] of pathMap) {
+            // 使用安全函数替代 eval()
+            const pathArray = JSONPath.JSONPath.toPathArray(jsonpath).slice(1);
+            const pathStr = pathArray.map(p => `[${typeof p === 'number' ? p : `"${p}"`}]`).join('');
+            const targetData = safeGet(jsonData, pathStr);
+            if (dataType(targetData) === "object" && !this.sortPaths.includes(jsonpath)) {
+              this.sortPaths.push(jsonpath);
             }
           }
         }
