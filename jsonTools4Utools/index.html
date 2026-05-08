@@ -741,7 +741,7 @@
         const options = this.__createEditorOptions(el_id);
 
         // set json
-        if (el_id.toLowerCase().indexOf("right") !== -1) {
+        if (el_id.toLowerCase().includes("right")) {
           if (this.jsonEditorRight === undefined) {
             this.jsonEditorRight = new JSONEditor(container, options);
           }
@@ -879,7 +879,6 @@
           const newFirstLineContent = editorObj.editor.aceEditor.session.getLine(start.row); // 变化后的内容
           const newkey = newFirstLineContent.split('": ')[0].slice(1);
           const newkeyColum = newkey.length;
-          const newkeyIndent = countLeadingSpaces(newkey);
           // 单行更新
           if (start.row === end.row) {
             // 更新内容在key外面，不影响paths
@@ -2953,7 +2952,7 @@
 
           // 确定是左还是右编辑器，滚动并高亮
           let targetEditor, targetContainer;
-          if (keys1.indexOf(String(lineNum)) !== -1 || keys1.indexOf(lineNum) !== -1) {
+          if (keys1.includes(String(lineNum)) || keys1.includes(lineNum)) {
             targetEditor = this.jsonEditorLeft;
             targetContainer = document.getElementById("jsonEditorLeft");
           } else {

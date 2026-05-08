@@ -121,7 +121,7 @@ const aceEditorInsertData = function (aceEditor, data, skipGotoLine = false) {
     }
     const jsonStr = myJsonStringify(targetData, null, 2);
     // 行数一样多，数据才是准确的
-    if (jsonStr.split("\n").length == range.end.row + 1) {
+    if (jsonStr.split("\n").length === range.end.row + 1) {
         aceEditor.session.replace(range, jsonStr);
     } else {
         aceEditor.setValue(jsonStr);
