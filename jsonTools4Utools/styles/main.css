@@ -144,15 +144,29 @@ html, body {
   height: var(--height-small);
 }
 
-.jsonQuery .el-input {
+.jsonQuery .el-input-group {
+  display: flex;
   height: var(--height-small);
+  border-radius: var(--border-radius-base);
+  overflow: hidden;
 }
 
 .jsonQuery .el-input__inner,
-.jsonQuery .el-input-group__append {
+.jsonQuery .el-input {
   height: var(--height-small) !important;
   line-height: var(--height-small) !important;
-  box-sizing: border-box !important;
+  border-radius: 0 !important;
+  border-right: none !important;
+}
+
+.jsonQuery .el-input-group__append {
+  height: var(--height-small) !important;
+  border-radius: 0 var(--border-radius-base) var(--border-radius-base) 0 !important;
+  border-left: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background-color: var(--color-primary) !important;
+  border-color: var(--color-primary) !important;
 }
 
 .jsonQuery .el-input-group__append .el-button {
@@ -160,15 +174,14 @@ html, body {
   min-width: 72px;
   padding: 0 12px !important;
   line-height: var(--height-small) !important;
-  box-sizing: border-box !important;
+  border-radius: 0 !important;
+  border: none !important;
+  background-color: transparent !important;
+  color: var(--color-text-inverse) !important;
 }
 
-.queryExecuteBtn {
-  height: var(--height-small) !important;
-  min-width: 72px;
-  background-color: var(--color-primary) !important;
-  color: var(--color-text-inverse) !important;
-  border-color: var(--color-primary) !important;
+.jsonQuery .el-input-group__append .el-button:hover {
+  background-color: rgba(255, 255, 255, 0.15) !important;
 }
 
 .queryItem {

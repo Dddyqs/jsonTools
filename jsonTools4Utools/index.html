@@ -51,17 +51,15 @@
           </template>
           <span class="editorMenuLabel editorMenuLabel--primary">{{ jsonEditorActive }}</span>
         </div>
-        <el-autocomplete id="jsonQuery" class="jsonQuery" v-model="jsonQueryStr" :fetch-suggestions="querySearch"
-          size="mini" placeholder="" @change="handleQuerySubmit('output')"
-          style="margin-left: 2px; flex: 1; min-width: 150px;">
-          <el-button slot="append" size="mini" class="queryExecuteBtn" :disabled="isAiGenerating" @click="handleQuerySubmit('output')">{{ isAiGenerating ? '处理中...' : '执行' }}</el-button>
+        <el-autocomplete class="jsonQuery" v-model="jsonQueryStr" :fetch-suggestions="querySearch"
+          size="mini" placeholder="" @change="handleQuerySubmit('output')" style="margin-left: 2px; flex: 1; min-width: 150px;">
           <template slot-scope="{ item }">
             <div class="queryItem">
               <span class="queryItemText">{{ item.value }}</span>
               <el-button v-if="item.value !== ''" type="text" size="mini" icon="el-icon-close" class="queryItemDelete" @click.stop="removeHistoryItem(item.value)"></el-button>
             </div>
           </template>
-          <div slot="suffix" style="display: none;"></div>
+          <el-button slot="append" :disabled="isAiGenerating" @click="handleQuerySubmit('output')">{{ isAiGenerating ? '处理中...' : '执行' }}</el-button>
         </el-autocomplete>
         <el-dropdown :hide-on-click="false" trigger="click" style="flex-shrink: 0; margin-left: auto;">
           <el-button plain type="success" size="mini" icon="el-icon-setting"></el-button>
