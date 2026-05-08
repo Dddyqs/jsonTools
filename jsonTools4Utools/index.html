@@ -489,6 +489,25 @@
         };
       },
 
+      // 工具方法：创建编辑器通用 options
+      __createEditorOptions(elId) {
+        const vm = this;
+        const options = {
+          modes: ['code', 'tree'],
+          mainMenuBar: false,
+          search: true,
+        };
+        options.onTextSelectionChange = function (row, col, text) {
+          if (vm.isQueryExecuting || vm.isJustInsertedData) return;
+          if (elId === "jsonEditorLeft") {
+            vm.jsonEditorActive = '左'; vm.transJsonEditorName = "";
+          } else if (elId === "jsonEditorRight") {
+            vm.jsonEditorActive = '右'; vm.transJsonEditorName = "";
+          }
+        };
+        return options;
+      },
+
       // 自动检测查询模式
       detectQueryMode(queryStr) {
         const str = queryStr.trim();
@@ -718,36 +737,8 @@
       },
       // 初始化 json_editor
       initJsonEditor(el_id) {
-        // create the editor
         const container = document.getElementById(el_id);
-        const options = {
-          // modes: ['preview', 'view', 'form', 'text', 'code', 'tree'],
-          modes: ['code', 'tree'],
-          // 字体（只有这个字体可以解决 等宽字体 遇见特殊字符 带来的光标错位）
-          // fontFamily: "Consolas",
-          // lineNumbers: true,
-          mainMenuBar: false,
-          // useTextareaForIME: true,
-          // 关闭连字功能
-          // enableLigatures: false,
-          search: true,
-        };
-
-        // 监控 选中的时候，获取 jsonpath/jq 路径
-        options.onTextSelectionChange = function (row, col, text) {
-          // 如果正在执行查询或刚刚完成数据插入，不修改 jsonEditorActive
-          if (vm.isQueryExecuting || vm.isJustInsertedData) {
-            return;
-          }
-          // 仅追踪活跃面板，不再自动填充查询输入框（改为双击触发）
-          if (el_id === "jsonEditorLeft") {
-            vm.jsonEditorActive = '左';
-            vm.transJsonEditorName = "";
-          } else if (el_id === "jsonEditorRight") {
-            vm.jsonEditorActive = '右';
-            vm.transJsonEditorName = "";
-          }
-        }
+        const options = this.__createEditorOptions(el_id);
 
         // set json
         if (el_id.toLowerCase().indexOf("right") !== -1) {
@@ -1239,20 +1230,7 @@
             if (isRight) { this.jsonEditorRight = undefined; }
             else { this.jsonEditorLeft = undefined; }
 
-            const options = {
-              modes: ['code', 'tree'],
-              mainMenuBar: false,
-              search: true,
-            };
-            const vm = this;
-            options.onTextSelectionChange = function (row, col, text) {
-              if (vm.isQueryExecuting || vm.isJustInsertedData) return;
-              if (elId === "jsonEditorLeft") {
-                vm.jsonEditorActive = '左'; vm.transJsonEditorName = "";
-              } else if (elId === "jsonEditorRight") {
-                vm.jsonEditorActive = '右'; vm.transJsonEditorName = "";
-              }
-            };
+            const options = this.__createEditorOptions(elId);
 
             const newEditor = new JSONEditor(container, options);
             newEditor.setName(editorName);
@@ -1369,22 +1347,7 @@
             else { this.jsonEditorLeft = undefined; }
 
             // 3d. 创建新编辑器
-            const options = {
-              modes: ['code', 'tree'],
-              mainMenuBar: false,
-              search: true,
-            };
-            const vm = this;
-            options.onTextSelectionChange = function (row, col, text) {
-              if (vm.isQueryExecuting || vm.isJustInsertedData) return;
-              if (elId === "jsonEditorLeft") {
-                vm.jsonEditorActive = '左';
-                vm.transJsonEditorName = "";
-              } else if (elId === "jsonEditorRight") {
-                vm.jsonEditorActive = '右';
-                vm.transJsonEditorName = "";
-              }
-            };
+            const options = this.__createEditorOptions(elId);
 
             const newEditor = new JSONEditor(container, options);
             newEditor.setName(editorName);
@@ -1451,20 +1414,7 @@
           if (isRight) { this.jsonEditorRight = undefined; }
           else { this.jsonEditorLeft = undefined; }
 
-          const options = {
-            modes: ['code', 'tree'],
-            mainMenuBar: false,
-            search: true,
-          };
-          const vm = this;
-          options.onTextSelectionChange = function (row, col, text) {
-            if (vm.isQueryExecuting || vm.isJustInsertedData) return;
-            if (elId === "jsonEditorLeft") {
-              vm.jsonEditorActive = '左'; vm.transJsonEditorName = "";
-            } else if (elId === "jsonEditorRight") {
-              vm.jsonEditorActive = '右'; vm.transJsonEditorName = "";
-            }
-          };
+          const options = this.__createEditorOptions(elId);
 
           const newEditor = new JSONEditor(container, options);
           newEditor.setName(editorName);
@@ -1936,13 +1886,11 @@
       },
       // 打开 jsonpath 的学习网页
       openJsonpathLearn() {
-        window.open("https://www.npmjs.com/package/jsonpath-plus");
-        utools.shellOpenExternal("https://www.npmjs.com/package/jsonpath-plus")
+        utools.shellOpenExternal("https://www.npmjs.com/package/jsonpath-plus");
       },
       // 打开 jq 的学习网页
       openJqLearn() {
-        window.open("https://jqlang.org/manual/");
-        utools.shellOpenExternal("https://jqlang.org/manual/")
+        utools.shellOpenExternal("https://jqlang.org/manual/");
       },
       // 判断是否为图片URL
       isImageUrl(value) {
@@ -2713,7 +2661,7 @@
             needReplace = true;
           }  // 相同
         })
-        if (needReplace == false) {  // 如果没有需要替换的，就直接返回
+        if (needReplace === false) {  // 如果没有需要替换的，就直接返回
           return newTextList;
         }
 
@@ -2785,26 +2733,6 @@
       },
 
       // 清理所有 diff 相关的样式和修改，避免重复渲染导致数据混乱
-      __clearDiffClass() {
-        // 清理左侧编辑器
-        const leftContainer = document.querySelector('#jsonEditorLeft');
-        if (leftContainer) {
-          leftContainer.querySelectorAll('.removeDiffLine, .addDiffLine, .modifyDiffLine, .removeDiffStr, .addDiffStr, .modifyDiffStr').forEach(el => {
-            $(el).removeClass('removeDiffLine addDiffLine modifyDiffLine removeDiffStr addDiffStr modifyDiffStr');
-          });
-          leftContainer.querySelectorAll('#nullValue').forEach(el => el.remove());
-        }
-
-        // 清理右侧编辑器
-        const rightContainer = document.querySelector('#jsonEditorRightBox');
-        if (rightContainer) {
-          rightContainer.querySelectorAll('.removeDiffLine, .addDiffLine, .modifyDiffLine, .removeDiffStr, .addDiffStr, .modifyDiffStr').forEach(el => {
-            $(el).removeClass('removeDiffLine addDiffLine modifyDiffLine removeDiffStr addDiffStr modifyDiffStr');
-          });
-          rightContainer.querySelectorAll('#nullValue').forEach(el => el.remove());
-        }
-      },
-
       // 修改 tree 的class 为 diff 之后的数据
       diffRender() {
         if (this.opName !== "jsonDiff") return;
@@ -2889,7 +2817,7 @@
           }
 
           const valueElClass = $(valueEl).attr("class") || '';
-          if (valueElClass.indexOf("Diff") === -1) {
+          if (!valueElClass.includes("Diff")) {
             $(valueEl).addClass(lineData.diffResClassName);
           }
           return valueText;
@@ -3213,11 +3141,12 @@
       isBoxHidden: {
         handler: function (newVal, oldVal) {
           if (typeof utools !== "undefined") {
-            if (utools.db.get("isBoxHidden") && utools.db.get("isBoxHidden")._rev) {
+            const saved = utools.db.get("isBoxHidden");
+            if (saved && saved._rev) {
               utools.db.put({
                 _id: "isBoxHidden",
                 data: this.isBoxHidden,
-                _rev: utools.db.get("isBoxHidden")._rev
+                _rev: saved._rev
               })
             } else {
               utools.db.put({

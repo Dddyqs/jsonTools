@@ -25,7 +25,8 @@ const dataType = function (data) {
 
 const myLosslessJSONReplacer = function (key, value) {
     if (typeof value === "number" && value.toString().includes(".")) {
-        const decimalCount = value.toString().split(".")[1].length;
+        const s = value.toString();
+        const decimalCount = s.split(".")[1].length;
         return value.toFixed(decimalCount);
     }
     return value;
@@ -33,7 +34,8 @@ const myLosslessJSONReplacer = function (key, value) {
 
 const myLosslessJSONReviver = function (key, value) {
     if (value && value.isLosslessNumber === true
-        && JSON.stringify(Object.keys(value)) === JSON.stringify(["isLosslessNumber", "value"])
+        && Array.isArray(Object.keys(value)) && Object.keys(value).length === 2
+        && "isLosslessNumber" in value && "value" in value
         && dataType(value.value) === "string") {
         if (value.value.length > 16 && !value.value.includes("e+") && !value.value.includes(".")) {
             return BigInt(value.value);
@@ -67,13 +69,7 @@ const myJsonReviverLong = function (key, value) {
 }
 
 const cleanLongXML = function (jsonStr) {
-    const lines = jsonStr.split("\n");
-    const result = [];
-    lines.forEach(line => {
-        const lineStr = line.replace(/<Long>(\d+)<\/Long>|<Long>(\d+\.\d+)<\/Long>/, "$1$2");
-        result.push(lineStr);
-    });
-    return result.join("\n");
+    return jsonStr.replace(/<Long>(\d+)<\/Long>|<Long>(\d+\.\d+)<\/Long>/g, "$1$2");
 }
 
 const myJsonParse = function (jsonStr, ...args) {
@@ -97,8 +93,9 @@ const editorGet = function (editor) {
 }
 
 const aceEditorInsertData = function (aceEditor, data, skipGotoLine = false) {
-    const row = aceEditor.getSelectionRange().end.row;
-    const column = aceEditor.getSelectionRange().end.column;
+    const selection = aceEditor.getSelectionRange();
+    const row = selection.end.row;
+    const column = selection.end.column;
     // 方案1：优先尝试使用 getFullDocumentRange
     let range;
     try {
