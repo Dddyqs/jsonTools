@@ -1524,57 +1524,30 @@
           this.jsonQueryStrHistorys.push(this.jsonQueryStr);
           this.jsonQueryStrList.unshift({ "value": this.jsonQueryStr });
         }
-        // 重置标记
         this.isAutoFilledQuery = false;
         try {
-          let jsonData;
-          // 判断数据源侧边：普通查询以光标所在面板为准（jsonEditorActive）
-          let isSourceRight = false;
-          if (this.jsonEditorActive) {
-            isSourceRight = this.jsonEditorActive === "右";
-          } else if (this.transJsonEditorName) {
-            isSourceRight = this.transJsonEditorName === "JSON右";
-          }
-          if (isSourceRight) {
-            // jq 模式需要用普通 JSON.parse，避免 LosslessNumber 对象问题
-            if (this.jsonQueryMode === "jq") {
-              jsonData = JSON.parse(this.jsonEditorRight.getText());
-            } else {
-              jsonData = LosslessJSON.parse(this.jsonEditorRight.getText(), myLosslessJSONReviver);
-            }
-          } else {
-            // jq 模式需要用普通 JSON.parse，避免 LosslessNumber 对象问题
-            if (this.jsonQueryMode === "jq") {
-              jsonData = JSON.parse(this.jsonEditorLeft.getText());
-            } else {
-              jsonData = LosslessJSON.parse(this.jsonEditorLeft.getText(), myLosslessJSONReviver);
-            }
-          }
+          const isSourceRight = this.jsonEditorActive 
+            ? this.jsonEditorActive === "右" 
+            : this.transJsonEditorName === "JSON右";
+          const isJq = this.jsonQueryMode === "jq";
+          const activeEditor = isSourceRight ? this.jsonEditorRight : this.jsonEditorLeft;
+          const jsonData = isJq 
+            ? JSON.parse(activeEditor.getText()) 
+            : LosslessJSON.parse(activeEditor.getText(), myLosslessJSONReviver);
+
           let resJsonData;
           if (this.jsonQueryMode === "jsonpath") {
-            let jpResult = JSONPath.JSONPath(this.jsonQueryStr, jsonData);
-            // jsonpath 返回匹配结果的数组，如果只有一个结果且是数组/对象，直接使用
-            if (Array.isArray(jpResult) && jpResult.length === 1) {
-              resJsonData = jpResult[0];
-            } else {
-              resJsonData = jpResult;
-            }
+            const jpResult = JSONPath.JSONPath(this.jsonQueryStr, jsonData);
+            resJsonData = Array.isArray(jpResult) && jpResult.length === 1 ? jpResult[0] : jpResult;
           } else if (this.jsonQueryMode === "jmespath") {
-            // jsonData 已在上方根据 isSourceRight 读取，直接使用
-            // 根据数据源选择对应编辑器的 executeQuery
-            const activeEditor = isSourceRight ? this.jsonEditorRight : this.jsonEditorLeft;
-            resJsonData = activeEditor.options.executeQuery(jsonData, this.jsonQueryStr)
+            resJsonData = activeEditor.options.executeQuery(jsonData, this.jsonQueryStr);
           } else if (this.jsonQueryMode === "jq") {
-            // 检查 jaqWasm 是否可用
             if (!window.jaqWasm) {
               throw new Error('jaq 模块未加载，请检查 preload.js 是否正确引入 jaq-wasm');
             }
-            const jaqResult = await window.jaqWasm.json(jsonData, this.jsonQueryStr);
-            resJsonData = jaqResult;
+            resJsonData = await window.jaqWasm.json(jsonData, this.jsonQueryStr);
           }
 
-          // 判断结果类型：JSON（对象/数组）展示在JSON面板，文本展示在编辑器
-          // 如果是数组且只有一个原始值元素，直接显示该值
           let finalResult = resJsonData;
           if (Array.isArray(resJsonData) && resJsonData.length === 1) {
             const firstItem = resJsonData[0];
@@ -1582,92 +1555,58 @@
               finalResult = firstItem;
             }
           }
-          const isJsonLike = finalResult !== null && finalResult !== undefined
-            && typeof finalResult === 'object';
-          const outputText = isJsonLike
-            ? myJsonStringify(finalResult)
+          const isJsonLike = finalResult !== null && finalResult !== undefined && typeof finalResult === 'object';
+          const outputText = isJsonLike 
+            ? myJsonStringify(finalResult) 
             : (finalResult === null ? 'null' : String(finalResult));
 
-          // 统一输出逻辑（复用之前定义的 isSourceRight）
-          // 设置标志防止插入数据后触发 onTextSelectionChange 修改 jsonEditorActive
           this.isJustInsertedData = true;
           if (isJsonLike) {
-            // JSON 结果 → JSON面板（对面）
-            // 不隐藏编辑器面板，保持用户之前的选择
-            if (isSourceRight) {
-              this.jsonEditorLeft.setMode("code");
-              aceEditorInsertData(this.jsonEditorLeft.aceEditor, finalResult, true);
-            } else {
-              this.jsonEditorRight.setMode("code");
-              aceEditorInsertData(this.jsonEditorRight.aceEditor, finalResult, true);
-            }
+            const targetEditor = isSourceRight ? this.jsonEditorLeft : this.jsonEditorRight;
+            targetEditor.setMode("code");
+            aceEditorInsertData(targetEditor.aceEditor, finalResult, true);
           } else {
-            // 文本结果 → 编辑器面板
             this.isBoxHidden.aceEditorBox = false;
             this.aceLanguage = "ace/mode/text";
             this.aceEditor.setValue(outputText);
-            // 不隐藏JSON面板，保持用户之前的选择
           }
-          // 恢复编辑器激活状态和面板状态
           this.jsonEditorActive = savedEditorActive;
           this.transJsonEditorName = savedTransJsonEditorName;
-          // 延迟清除标志，确保 Ace 编辑器的 onChangeSelection 事件不会误触发
-          setTimeout(() => {
-            this.isJustInsertedData = false;
-          }, 200);
+          setTimeout(() => { this.isJustInsertedData = false; }, 200);
         } catch (error) {
-          // 恢复编辑器激活状态和面板状态
           this.jsonEditorActive = savedEditorActive;
           this.transJsonEditorName = savedTransJsonEditorName;
-          // 统一错误展示：编辑器面板
           this.isBoxHidden.aceEditorBox = false;
-          // 不隐藏JSON面板，保持用户之前的选择
-          // 错误信息直接展示
           this.aceEditor.setValue(error.message);
         } finally {
-          // 清除查询执行标志
           this.isQueryExecuting = false;
         }
       },
-      // AI云端处理JSON数据（直接返回处理结果，不是生成表达式）
       async aiProcessJson() {
         if (!this.jsonQueryStr.trim()) {
           this.$message.warning('请输入处理需求');
           return;
         }
 
-        // 设置查询执行标志
         this.isQueryExecuting = true;
         const savedEditorActive = this.jsonEditorActive;
         const savedTransJsonEditorName = this.transJsonEditorName;
         this.isAiGenerating = true;
         this.jsonQueryMode = 'ai';
 
-        // 保存历史记录（只有非自动生成的用户输入才记录）
         if (!this.isAutoFilledQuery && !this.jsonQueryStrHistorys.includes(this.jsonQueryStr)) {
           this.jsonQueryStrHistorys.push(this.jsonQueryStr);
           this.jsonQueryStrList.unshift({ "value": this.jsonQueryStr });
         }
-        // 重置标记
         this.isAutoFilledQuery = false;
 
         try {
-          // 获取当前JSON数据
-          let jsonData;
-          // 判断数据源侧边：筛选/排序操作以面板所属位置为准（transJsonEditorName），光标作为兜底
-          let isSourceRight = false;
-          if (this.transJsonEditorName) {
-            isSourceRight = this.transJsonEditorName === "JSON右";
-          } else if (this.jsonEditorActive) {
-            isSourceRight = this.jsonEditorActive === "右";
-          }
-          if (isSourceRight) {
-            jsonData = this.jsonEditorRight.get();
-          } else {
-            jsonData = this.jsonEditorLeft.get();
-          }
+          const isSourceRight = this.transJsonEditorName 
+            ? this.transJsonEditorName === "JSON右" 
+            : this.jsonEditorActive === "右";
+          const activeEditor = isSourceRight ? this.jsonEditorRight : this.jsonEditorLeft;
+          const jsonData = activeEditor.get();
 
-          // 大数据量时提取骨架结构
           let jsonContent;
           try {
             jsonContent = JSON.stringify(jsonData);
@@ -1680,7 +1619,6 @@
             jsonContent = JSON.stringify(skeleton);
           }
 
-          // 构建messages - 让AI直接处理数据并返回结果
           const messages = [
             {
               role: 'system',
@@ -1720,19 +1658,14 @@
               content: (skeleton ? '【注意：由于数据量较大，以下是JSON的骨架结构】\n\n' : '') + 'JSON数据：\n' + jsonContent + '\n\n处理需求：' + this.jsonQueryStr + '\n\n请直接输出处理后的JSON结果（不要任何解释）：'}
           ];
 
-          // 调用AI
-          const aiOptions = { messages: messages };
-          const result = await utools.ai(aiOptions);
+          const result = await utools.ai({ messages: messages });
 
-          // 解析AI返回的内容
           const content = result.content || result;
           let processedData;
 
           try {
-            // 尝试解析为JSON
             processedData = JSON.parse(content.trim());
           } catch (e) {
-            // 如果不是合法JSON，尝试提取JSON部分
             const jsonMatch = content.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
             if (jsonMatch) {
               processedData = JSON.parse(jsonMatch[0]);
@@ -1741,66 +1674,49 @@
             }
           }
 
-          // 设置标志防止插入数据后触发 onTextSelectionChange 修改 jsonEditorActive
           this.isJustInsertedData = true;
-
-          // 根据结果类型决定显示位置
-          // 数据源是右面板，结果显示在左面板；数据源是左面板，结果显示在右面板
           const resultType = typeof processedData;
           if (resultType === 'object' && processedData !== null) {
-            // 对象或数组，显示在JSON面板
             this.isBoxHidden.leftSection = false;
+            const targetEditor = isSourceRight ? this.jsonEditorLeft : this.jsonEditorRight;
             if (isSourceRight) {
-              // 数据源是右面板，结果显示在左面板
               this.isBoxHidden.jsonEditorLeftBox = false;
-              this.jsonEditorLeft.setMode("code");
-              this.jsonEditorLeft.set(processedData);
             } else {
-              // 数据源是左面板，结果显示在右面板
               this.isBoxHidden.jsonEditorRightBox = false;
-              this.jsonEditorRight.setMode("code");
-              this.jsonEditorRight.set(processedData);
             }
+            targetEditor.setMode("code");
+            targetEditor.set(processedData);
           } else {
-            // 字符串、数字、布尔值等基本类型，显示在编辑器面板
-            // 基本类型不左右对调，统一显示在编辑器面板
             this.isBoxHidden.leftSection = false;
             this.isBoxHidden.aceEditorBox = false;
             this.aceEditor.setValue(String(processedData));
           }
 
-          // 恢复编辑器激活状态和面板状态
           this.jsonEditorActive = savedEditorActive;
           this.transJsonEditorName = savedTransJsonEditorName;
-          // 延迟清除标志，确保 Ace 编辑器的 onChangeSelection 事件不会误触发
-          setTimeout(() => {
-            this.isJustInsertedData = false;
-          }, 200);
+          setTimeout(() => { this.isJustInsertedData = false; }, 200);
 
           this.$message.success('AI处理完成');
 
         } catch (error) {
           console.error('AI处理错误:', error);
           this.$message.error('AI处理失败: ' + error.message);
-          // 恢复编辑器激活状态和面板状态
           this.jsonEditorActive = savedEditorActive;
           this.transJsonEditorName = savedTransJsonEditorName;
         } finally {
-          // 清除查询执行标志
           this.isQueryExecuting = false;
           this.isAiGenerating = false;
         }
       },
-      // 提取JSON骨架结构（用于大数据量时）
       extractJsonSkeleton(data, maxItems = 3) {
         if (Array.isArray(data)) {
           if (data.length === 0) return [];
           const sample = data.slice(0, maxItems).map(item => this.extractJsonSkeleton(item, maxItems));
           return data.length > maxItems ? [...sample, `... (${data.length - maxItems} more items)`] : sample;
         } else if (data !== null && typeof data === 'object') {
-          const result = {};
           const allKeys = Object.keys(data);
           const keys = allKeys.slice(0, maxItems);
+          const result = {};
           for (const key of keys) {
             result[key] = this.extractJsonSkeleton(data[key], maxItems);
           }
@@ -2192,58 +2108,38 @@
         jsonEditor.updateText(myJsonStringify(jsonData));
       },
       __sortJson(jsonData, jsonPath, direction) {
-        // direction 有效性检查
         if (direction !== "asc" && direction !== "desc") {
           return jsonData;
         }
 
-        let newJsonData = LosslessJSON.parse(LosslessJSON.stringify(jsonData));
-        
-        // 构建路径
+        const newJsonData = LosslessJSON.parse(LosslessJSON.stringify(jsonData));
         const pathArray = JSONPath.JSONPath.toPathArray(jsonPath).slice(1);
         const pathStr = pathArray.map(p => `[${typeof p === 'number' ? p : `"${p}"`}]`).join('');
-        
-        // 使用安全函数获取数据
         const oldData = safeGet(jsonData, pathStr);
-        
-        // 类型检查：只对普通对象进行 key 排序，null/undefined/数组/基本类型跳过
+
         if (oldData === null || oldData === undefined || typeof oldData !== 'object' || Array.isArray(oldData)) {
           return jsonData;
         }
-        
-        if (direction === "asc") {  // 升序
-          const sortedObjAsc = Object.keys(oldData)
-            .sort()
-            .reduce((acc, key) => {
-              acc[key] = oldData[key];
-              return acc;
-            }, {});
-          // 使用安全函数设置数据
-          safeSet(newJsonData, pathStr, sortedObjAsc);
-        } else if (direction === "desc") {  // 倒序
-          const keys = Object.keys(oldData).sort((a, b) => b.localeCompare(a));
-          let sortedObjDesc = {};
-          keys.forEach(key => {
-            sortedObjDesc[key] = oldData[key];
-          });
-          // 使用安全函数设置数据
-          safeSet(newJsonData, pathStr, sortedObjDesc);
+
+        const sortedKeys = Object.keys(oldData);
+        if (direction === "asc") {
+          sortedKeys.sort();
+        } else {
+          sortedKeys.sort((a, b) => b.localeCompare(a));
         }
+        const sortedObj = {};
+        sortedKeys.forEach(key => { sortedObj[key] = oldData[key]; });
+        safeSet(newJsonData, pathStr, sortedObj);
         return newJsonData;
       },
-      // 切换按键排序方向并执行排序
       toggleSortJsonByFieldKey() {
-        // 切换方向
         this.sortFieldKeyDirection = this.sortFieldKeyDirection === 'asc' ? 'desc' : 'asc';
-        // 执行排序
         this.sortJsonByFieldKey(this.sortFieldKeyDirection);
       },
       sortJsonByFieldKey(direction = 'asc') {
-        let jsonData;
-        let jsonEditor;
         const isRight = this.jsonEditorActive === "右";
-        jsonEditor = isRight ? this.jsonEditorRight : this.jsonEditorLeft;
-        jsonData = LosslessJSON.parse(jsonEditor.getText(), myLosslessJSONReviver);
+        const jsonEditor = isRight ? this.jsonEditorRight : this.jsonEditorLeft;
+        const jsonData = LosslessJSON.parse(jsonEditor.getText(), myLosslessJSONReviver);
 
         if (!jsonEditor || !jsonData) {
           return;
@@ -2251,26 +2147,20 @@
         const sortedData = this.__sortJsonByKeys(jsonData, direction);
         jsonEditor.updateText(myJsonStringify(sortedData, null, 2));
       },
-      // 递归按key排序的辅助函数
       __sortJsonByKeys(data, direction = 'asc') {
         if (Array.isArray(data)) {
-          // 数组：递归处理每个元素
           return data.map(item => this.__sortJsonByKeys(item, direction));
         } else if (data !== null && typeof data === 'object') {
-          // 对象：按key排序
-          let sortedKeys;
+          const sortedKeys = Object.keys(data);
           if (direction === 'asc') {
-            sortedKeys = Object.keys(data).sort((a, b) => a.localeCompare(b));
+            sortedKeys.sort((a, b) => a.localeCompare(b));
           } else {
-            sortedKeys = Object.keys(data).sort((a, b) => b.localeCompare(a));
+            sortedKeys.sort((a, b) => b.localeCompare(a));
           }
           const sortedObj = {};
-          sortedKeys.forEach(key => {
-            sortedObj[key] = this.__sortJsonByKeys(data[key], direction);
-          });
+          sortedKeys.forEach(key => { sortedObj[key] = this.__sortJsonByKeys(data[key], direction); });
           return sortedObj;
         }
-        // 基本类型直接返回
         return data;
       },
       // 切换aceEditor的mode
