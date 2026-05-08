@@ -118,7 +118,75 @@ html, body {
   flex-shrink: 0;
 }
 
-/* ==================== 布局样式 ==================== */
+/* 统一工具栏按钮高度 */
+.funcsBar .el-button--mini,
+.funcsBar .el-button--mini.is-plain {
+  height: var(--height-small) !important;
+  line-height: var(--height-small) !important;
+  padding: 0 8px !important;
+  box-sizing: border-box;
+}
+
+/* 修复 el-badge 对齐 */
+.funcsBar .el-badge__content {
+  line-height: 16px;
+}
+
+/* ==================== 查询框样式 ==================== */
+.jsonQuery {
+  display: inline-flex;
+  margin-left: var(--spacing-xs);
+  max-width: 900px;
+  flex: 1;
+  min-width: 150px;
+  flex-shrink: 0;
+  vertical-align: middle;
+  height: var(--height-small);
+}
+
+.jsonQuery .el-input {
+  height: var(--height-small);
+}
+
+.jsonQuery .el-input__inner,
+.jsonQuery .el-input-group__append {
+  height: var(--height-small) !important;
+  line-height: var(--height-small) !important;
+  box-sizing: border-box !important;
+}
+
+.jsonQuery .el-input-group__append .el-button {
+  height: var(--height-small) !important;
+  min-width: 72px;
+  padding: 0 12px !important;
+  line-height: var(--height-small) !important;
+  box-sizing: border-box !important;
+}
+
+.queryExecuteBtn {
+  height: var(--height-small) !important;
+  min-width: 72px;
+  background-color: var(--color-primary) !important;
+  color: var(--color-text-inverse) !important;
+  border-color: var(--color-primary) !important;
+}
+
+.queryItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.queryItemText {
+  flex: 1;
+}
+
+.queryItemDelete {
+  padding: 0;
+  margin-left: 10px;
+  color: var(--color-text-secondary);
+}
 .leftSection {
   width: 49.6%;
   display: flex;
@@ -435,69 +503,6 @@ span {
 
 .el-select-dropdown__item {
   padding: 0 var(--spacing-xs) !important;
-}
-
-/* ==================== 查询框样式 ==================== */
-.jsonQuery {
-  display: inline-flex;
-  margin-left: var(--spacing-xs);
-  max-width: 900px;
-  flex-shrink: 0;
-  vertical-align: middle;
-}
-
-.jsonQuery .el-input-group,
-.jsonQuery .el-input__inner,
-.jsonQuery .el-input-group__append,
-.jsonQuery .el-input-group__append .el-button {
-  height: var(--height-small) !important;
-  line-height: var(--height-small) !important;
-  box-sizing: border-box !important;
-}
-
-.jsonQuery .el-input-group__append .el-button {
-  padding: 0 12px !important;
-}
-
-.el-input-group-prepend .el-select .el-input__inner {
-  padding-right: 20px !important;
-  text-align: center !important;
-}
-
-#jsonQuery {
-  display: inline-flex;
-  height: auto;
-  padding-left: var(--spacing-xs);
-  padding-right: var(--spacing-xs);
-  color: var(--color-text-primary);
-}
-
-.el-input-group {
-  height: auto;
-}
-
-.queryExecuteBtn {
-  min-width: 72px;
-  background-color: var(--color-primary) !important;
-  color: var(--color-text-inverse) !important;
-  border-color: var(--color-primary) !important;
-}
-
-.queryItem {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-}
-
-.queryItemText {
-  flex: 1;
-}
-
-.queryItemDelete {
-  padding: 0;
-  margin-left: 10px;
-  color: var(--color-text-secondary);
 }
 
 /* ==================== AI 助手对话框样式 ==================== */
