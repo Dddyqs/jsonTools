@@ -314,6 +314,7 @@
       /\|\s*max_by\s*\(/, /\|\s*min_by\s*\(/, /\|\s*not_null\s*\(/, /\|\s*to_string\s*\(/,
       /\|\s*to_number\s*\(/, /\.\s*@/, /\[\s*\*\s*\]/, /\[\s*\d+\s*:\s*\d*\s*\]/, /\[\s*\d+\s*:\s*:\s*\d+\s*\]/
     ],
+    jsonpath: /^\$/,
     imageUrl: /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?.*)?$/i,
     msTimestamp: /^[1-9]\d{12}$/,
     sTimestamp: /^[1-9]\d{9}$/
@@ -505,7 +506,7 @@
         const str = queryStr.trim();
         if (!str) return 'jsonpath';
 
-        if (str.startsWith('$')) {
+        if (_RE.jsonpath.test(str) || str.startsWith('$')) {
           return 'jsonpath';
         }
 
@@ -518,13 +519,13 @@
         return 'jsonpath';
       },
       // AI判断查询模式
-      async aiDetectQueryMode(queryStr) {
+      aiDetectQueryMode(queryStr) {
         const trimmed = queryStr.trim();
 
-        if (/^@/.test(trimmed) || /\[\?[\w.]+\s*[><=!]=/.test(trimmed) || /\b(contains|starts_with|ends_with|length)\b/.test(trimmed)) {
+        if (_RE.jmespath[0].test(trimmed) || /\[\?[\w.]+\s*[><=!]=/.test(trimmed) || /\b(contains|starts_with|ends_with|length)\b/.test(trimmed)) {
           return 'jmespath';
         }
-        if (/^\$/.test(trimmed)) {
+        if (_RE.jsonpath.test(trimmed)) {
           return 'jsonpath';
         }
 
