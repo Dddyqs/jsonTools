@@ -1544,12 +1544,12 @@
       },
       // tree模式下的搜索
       treeSearch(editorName) {
-        let res;
-        if (editorName === "jsonEditorLeft") {
-          res = this.jsonEditorLeft.search(this.jsonLeftTreeSearchStr);
-        } else {
-          res = this.jsonEditorRight.search(this.jsonRightTreeSearchStr);
-        }
+        const editor = editorName === "jsonEditorLeft" ? this.jsonEditorLeft : this.jsonEditorRight;
+        // Bug修复: 检查编辑器是否存在且处于 tree 模式
+        if (!editor || editor.getMode() !== 'tree') return;
+        
+        const searchStr = editorName === "jsonEditorLeft" ? this.jsonLeftTreeSearchStr : this.jsonRightTreeSearchStr;
+        const res = editor.search(searchStr);
         if (res && res.length > 0) {
           res.forEach(el => {
             el.node.expandPathToNode();
@@ -2067,6 +2067,8 @@
       // 收缩JSON
       foldAll(event) {
         const { editor } = this.__getEditorFromEvent(event);
+        // Bug修复: 检查编辑器是否存在
+        if (!editor) return;
         if (editor.getMode() === "code") {
           editor.aceEditor.session.foldAll();
         } else if (editor.getMode() === "tree") {
@@ -2076,6 +2078,8 @@
       // 展开JSON
       unfold(event) {
         const { editor } = this.__getEditorFromEvent(event);
+        // Bug修复: 检查编辑器是否存在
+        if (!editor) return;
         if (editor.getMode() === "code") {
           editor.aceEditor.session.unfold();
         } else if (editor.getMode() === "tree") {
@@ -2420,8 +2424,15 @@
         this.jsonFormat(this.jsonEditorLeft);
         this.jsonFormat(this.jsonEditorRight);
 
-        const jsonEditorLeftData = LosslessJSON.parse(leftText);
-        const jsonEditorRightData = LosslessJSON.parse(rightText);
+        // Bug修复: 添加 try-catch 处理 JSON 解析错误
+        let jsonEditorLeftData, jsonEditorRightData;
+        try {
+          jsonEditorLeftData = LosslessJSON.parse(leftText);
+          jsonEditorRightData = LosslessJSON.parse(rightText);
+        } catch (e) {
+          this.$message.error('JSON 解析失败: ' + e.message);
+          return;
+        }
 
         // 预构建路径到值的映射，避免重复 JSONPath 查询
         const leftValueMap = this.__buildPathValueMap(jsonEditorLeftData, this.jsonEditorLeftJsonpathLineDict);
