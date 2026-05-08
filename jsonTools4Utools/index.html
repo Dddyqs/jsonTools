@@ -92,9 +92,9 @@
           <div id="jsonMenu" class="editorMenu">
             <div class="editorMenuBtn" style="display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 4px; color: #e9f0e2; font-size: 11px; font-weight: bold;">左</div>
 
-            <el-button type="primary" size="mini" class="modeActive editorMenuBtn setModeCodeBtn"
+            <el-button type="primary" size="mini" :class="['editorMenuBtn setModeCodeBtn', jsonEditorLeftMode === 'code' ? 'modeActive' : '']"
               @click="setModeCode" style="margin-right: 0;">code</el-button>
-            <el-button type="primary" size="mini" class="editorMenuBtn setModeTreeBtn" @click="setModeTree"
+            <el-button type="primary" size="mini" :class="['editorMenuBtn setModeTreeBtn', jsonEditorLeftMode === 'tree' ? 'modeActive' : '']" @click="setModeTree"
               style="margin-left: 0;">tree</el-button>
             <el-button v-if="jsonEditorLeftMode === 'code'" type="primary" size="mini"
               class="editorMenuBtn jsonFormatBtn" @click="jsonFormat">格式化</el-button>
@@ -241,9 +241,9 @@
           <div id="jsonRightMenu" class="editorMenu">
             <div class="editorMenuBtn" style="display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 4px; color: #e9f0e2; font-size: 11px; font-weight: bold;">右</div>
 
-            <el-button type="primary" size="mini" class="modeActive editorMenuBtn setModeCodeBtn"
+            <el-button type="primary" size="mini" :class="['editorMenuBtn setModeCodeBtn', jsonEditorRightMode === 'code' ? 'modeActive' : '']"
               @click="setModeCode" style="margin-right: 0;">code</el-button>
-            <el-button type="primary" size="mini" class="editorMenuBtn setModeTreeBtn" @click="setModeTree"
+            <el-button type="primary" size="mini" :class="['editorMenuBtn setModeTreeBtn', jsonEditorRightMode === 'tree' ? 'modeActive' : '']" @click="setModeTree"
               style="margin-left: 0;">tree</el-button>
             <el-button v-if="jsonEditorRightMode === 'code'" type="primary" size="mini"
               class="editorMenuBtn jsonFormatBtn" @click="jsonFormat">格式化</el-button>
@@ -960,25 +960,8 @@
           if (!path || path.length === 0) {
             return true;
           }
-          let jsonData;
-          let onNodeName;
-          if (editorName === "jsonEditorLeft") {
-            jsonData = LosslessJSON.parse(vm.jsonLeftStr);
-            onNodeName = "jsonEditor▶" + path.join("▶");
-          } else if (editorName === "jsonEditorRight") {
-            jsonData = LosslessJSON.parse(vm.jsonRightStr);
-            onNodeName = "jsonEditorRight▶" + path.join("▶");
-          }
-          let jsonpathStr;
-          // 使用切片拷贝，避免破坏性修改原始 path 引用
-          let processedPath = [...path];
-          if (typeof processedPath[0] === "number") {
-            jsonpathStr = `$[${processedPath[0]}]`;
-            processedPath.shift();
-          }
-          if (processedPath.length !== 0) {
-            jsonpathStr = jsonpathStr + window.jsonpath.stringify(processedPath).slice(1);
-          }
+          // onEditable 只需要返回 true/false 控制是否可编辑，无需解析整个 JSON
+          // 原代码中解析 JSON 后的结果并未被使用，属于无效计算
           return true;
         }
 
@@ -1191,56 +1174,108 @@
       },
 
       // 切换为code模式（tree → code）
+      // 切换为 code 模式（tree → code）— 销毁旧编辑器，全新创建为 code 模式
+      // 与 setModeTree 保持一致，使用销毁重建方式避免 DOM 竞态
       setModeCode(event) {
         if (this._isSwitchingMode) return;
         this._isSwitchingMode = true;
 
+        const finish = () => { setTimeout(() => { this._isSwitchingMode = false; }, 300); };
+
         try {
           const isRight = $(event.currentTarget).parents("#rightSection").length >= 1;
           const editor = isRight ? this.jsonEditorRight : this.jsonEditorLeft;
+          const editorName = isRight ? "jsonEditorRight" : "jsonEditorLeft";
+          const elId = isRight ? "jsonEditorRight" : "jsonEditorLeft";
 
-          // ★ 用 get() 直接取内部对象（两种模式都能用），再序列化为文本备用
+          // 取数据
           let backupText = '';
+          let rawData = null;
           try {
-            const data = editor.get();
-            if (data !== undefined && data !== null && data !== '') {
-              backupText = myJsonStringify(data, null, 2);
+            rawData = editor.get();
+            if (rawData !== undefined && rawData !== null && rawData !== '') {
+              backupText = myJsonStringify(rawData, null, 2);
             }
           } catch(e) { /* get失败时尝试getText兜底 */ }
 
-          // 如果get没拿到，再试getText
           if (!backupText) {
             backupText = editor.getText() || '';
           }
 
-          console.log('[setModeCode] 备份数据长度:', backupText.length);
-
           if (!backupText || !backupText.trim()) {
             this.$message.warning('没有可恢复的数据，保持当前模式');
+            finish();
             return;
           }
 
-          // 执行切换
-          editor.setMode("code");
-          editor.updateText(backupText);
+          // 销毁旧编辑器 → 新建为 code 模式
+          try {
+            try { editor.destroy(); } catch(e) { console.warn('destroy 可忽略:', e.message); }
 
-          // 更新状态
-          if (isRight) {
-            this.jsonRightClassNameMap = {};
-            this.jsonRightClassNameMapStr = "";
-            this.jsonEditorRightMode = "code";
-            [this.jsonpathRightMap, this.jsonEditorRightJsonpathLineDict] = buildPathMap(editor.get());
-          } else {
-            this.jsonEditorLeftMode = "code";
-            [this.jsonpathLeftMap, this.jsonEditorLeftJsonpathLineDict] = buildPathMap(editor.get());
+            const container = document.getElementById(elId);
+            if (container) { container.innerHTML = ''; }
+
+            if (isRight) { this.jsonEditorRight = undefined; }
+            else { this.jsonEditorLeft = undefined; }
+
+            const options = {
+              modes: ['code', 'tree'],
+              mainMenuBar: false,
+              search: true,
+            };
+            const vm = this;
+            options.onTextSelectionChange = function (row, col, text) {
+              if (vm.isQueryExecuting || vm.isJustInsertedData) return;
+              if (elId === "jsonEditorLeft") {
+                vm.jsonEditorActive = '左'; vm.transJsonEditorName = "";
+              } else if (elId === "jsonEditorRight") {
+                vm.jsonEditorActive = '右'; vm.transJsonEditorName = "";
+              }
+            };
+
+            const newEditor = new JSONEditor(container, options);
+            newEditor.setName(editorName);
+
+            if (isRight) { this.jsonEditorRight = newEditor; }
+            else { this.jsonEditorLeft = newEditor; }
+
+            // 设置数据
+            try {
+              aceEditorInsertData(newEditor.aceEditor, LosslessJSON.parse(backupText));
+            } catch(setErr) {
+              console.error('[setModeCode] 设置数据失败:', setErr.message);
+              newEditor.updateText(backupText);
+            }
+
+            // 更新状态
+            if (isRight) {
+              this.jsonRightClassNameMap = {};
+              this.jsonRightClassNameMapStr = "";
+              this.jsonEditorRightMode = "code";
+              try {
+                [this.jsonpathRightMap, this.jsonEditorRightJsonpathLineDict] = buildPathMap(newEditor.get());
+              } catch(e) {}
+            } else {
+              this.jsonEditorLeftMode = "code";
+              try {
+                [this.jsonpathLeftMap, this.jsonEditorLeftJsonpathLineDict] = buildPathMap(newEditor.get());
+              } catch(e) {}
+            }
+
+            // 绑定事件（在设置数据之后绑定，避免 change 事件干扰）
+            vm.__addEditorWatchEvent(editorName);
+
+            console.log(`[setModeCode] ✓ ${editorName} 已切换为 code 模式（销毁重建方式）`);
+          } catch (err) {
+            console.error('[setModeCode] ✗ 切换失败，回滚:', err);
+            this.__rebuildEditor(editorName, elId, isRight, backupText, rawData);
+            this.$message.warning('切换 code 模式失败，已自动恢复');
           }
-          console.log('[setModeCode] 切换成功');
         } catch (e) {
           console.error('[setModeCode] 错误:', e);
           this.$message.warning('切换到 code 模式失败: ' + e.message);
-        } finally {
-          setTimeout(() => { this._isSwitchingMode = false; }, 500);
         }
+        finish();
       },
 
       // 切换为tree模式（code → tree）— 销毁旧编辑器，全新创建为 tree 模式
@@ -1386,7 +1421,7 @@
       },
 
       // 彻底重建编辑器（用于回滚：切换失败时恢复为 code 模式的全新编辑器）
-      __rebuildEditor(editorName, elId, isRight, backupText, rawData) {
+      __rebuildEditor(editorName, elId, isRight, backupText, rawData, mode = "code") {
         try {
           const oldEditor = isRight ? this.jsonEditorRight : this.jsonEditorLeft;
 
@@ -1420,8 +1455,21 @@
           else { this.jsonEditorLeft = newEditor; }
 
           if (backupText && backupText.trim()) {
-            aceEditorInsertData(newEditor.aceEditor, LosslessJSON.parse(backupText));
-            if (dataType(newEditor.get()) === "object" || dataType(newEditor.get()) === "array") {
+            if (mode === "tree") {
+              // tree 模式：先设置模式，再设置数据
+              newEditor.setMode("tree");
+              try {
+                newEditor.set(LosslessJSON.parse(backupText));
+              } catch(e) {
+                // 设置失败时回退到 code 模式
+                newEditor.setMode("code");
+                aceEditorInsertData(newEditor.aceEditor, LosslessJSON.parse(backupText));
+                mode = "code";
+              }
+            } else {
+              aceEditorInsertData(newEditor.aceEditor, LosslessJSON.parse(backupText));
+            }
+            if (mode === "code" && (dataType(newEditor.get()) === "object" || dataType(newEditor.get()) === "array")) {
               if (isRight) {
                 [this.jsonpathRightMap, this.jsonEditorRightJsonpathLineDict] = buildPathMap(newEditor.get());
               } else {
@@ -1432,10 +1480,10 @@
 
           this.__addEditorWatchEvent(editorName);
 
-          if (isRight) { this.jsonEditorRightMode = "code"; }
-          else { this.jsonEditorLeftMode = "code"; }
+          if (isRight) { this.jsonEditorRightMode = mode; }
+          else { this.jsonEditorLeftMode = mode; }
 
-          console.log(`[__rebuildEditor] ${editorName} 重建成功，数据长度: ${backupText.length}`);
+          console.log(`[__rebuildEditor] ${editorName} 重建成功(${mode}模式)，数据长度: ${backupText.length}`);
         } catch (rebuildErr) {
           console.error('[__rebuildEditor] 重建也失败了！！:', rebuildErr);
           this.$message.error('编辑器状态异常，建议刷新页面重试');
@@ -3202,26 +3250,12 @@
       },
       jsonEditorLeftMode: {
         handler: function (newVal, oldVal) {
-          setTimeout(() => {
-            $("#jsonEditorLeftBox .modeActive").removeClass("modeActive");
-            if (newVal === "tree") {
-              $("#jsonEditorLeftBox .setModeTreeBtn").addClass("modeActive");
-            } else {
-              $("#jsonEditorLeftBox .setModeCodeBtn").addClass("modeActive");
-            }
-          }, 100);
+          // 模式按钮高亮由 Vue 的 :class 绑定驱动，无需手动操作 DOM
         }
       },
       jsonEditorRightMode: {
         handler: function (newVal, oldVal) {
-          setTimeout(() => {
-            $("#jsonEditorRightBox .modeActive").removeClass("modeActive");
-            if (newVal === "tree") {
-              $("#jsonEditorRightBox .setModeTreeBtn").addClass("modeActive");
-            } else {
-              $("#jsonEditorRightBox .setModeCodeBtn").addClass("modeActive");
-            }
-          }, 100);
+          // 模式按钮高亮由 Vue 的 :class 绑定驱动，无需手动操作 DOM
         }
       },
       // 监控数据变化，保存 isBoxHidden 数据
