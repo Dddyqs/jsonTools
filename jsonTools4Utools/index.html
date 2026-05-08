@@ -912,7 +912,7 @@
               } else if (editorName === "jsonEditorRight") {
                 [this.jsonpathRightMap, this.jsonEditorRightJsonpathLineDict] = buildPathMap(editorObj.editor.get());
                 if (this.transJsonEditorName === "JSON右") {
-                  this.transPaths = await this.__getTransJsonpaths(this.jsonpathRightMap, false);;
+                  this.transPaths = await this.__getTransJsonpaths(this.jsonpathRightMap, false);
                 }
               }
               // 更新排序用的jsonpaths，但是要忽略 projection 选项
@@ -1164,6 +1164,10 @@
       sortKeysByLodash(data, key, order = "asc") {
         const cmp = (a, b) => {
           const va = a[key], vb = b[key];
+          // null/undefined 排到最后
+          if (va == null && vb == null) return 0;
+          if (va == null) return 1;
+          if (vb == null) return -1;
           if (va < vb) return order === "asc" ? -1 : 1;
           if (va > vb) return order === "asc" ? 1 : -1;
           return 0;
@@ -1582,6 +1586,8 @@
 
       //根据jsonpath、jmespath、jq获取数据
       async getJsonByQuery(op) {
+        // 防重入：上一次查询未完成时忽略新的请求
+        if (this.isQueryExecuting) return;
         this.opName = "getJsonByQuery";
         // 设置查询执行标志，防止onTextSelectionChange修改jsonEditorActive
         this.isQueryExecuting = true;
@@ -2144,16 +2150,18 @@
           const optionKey = optionsKeys[index];
           let transJsonpaths;
           let jmepsRes;
-          if (Object.keys(queryOptions).length === 1 || queryOptions.path) {
+          // Bug修复: queryOptions.path 是对象 {field:""}，即使 field 为空也是 truthy
+          // 应该检查 path.field 是否有值
+          if (Object.keys(queryOptions).length === 1 || (queryOptions.path && queryOptions.path.field)) {
             jmepsRes = jsonData;
           } else {
-            // 根据数据源选择对应的编辑器执行查询
+            // Bug修复: 使用参数 queryOptions 而非 this.queryOptions，保持数据源一致
             const activeEditor = this.transJsonEditorName === "JSON右" ? this.jsonEditorRight : this.jsonEditorLeft;
-            jmepsRes = activeEditor.options.executeQuery(jsonData, this.queryOptions[optionKey]);
+            jmepsRes = activeEditor.options.executeQuery(jsonData, queryOptions[optionKey]);
           }
           // 再更新路径
-          // 空结果就不更新了
-          if (jmepsRes && jmepsRes.length > 0) {
+          // Bug修复: 结果可能是对象而非数组，对象没有 length 属性
+          if (jmepsRes && (Array.isArray(jmepsRes) ? jmepsRes.length > 0 : true)) {
             const [jsonpathMap, jsonpathLineDict] = buildPathMap(jmepsRes);
             transJsonpaths = await this.__getTransJsonpaths(jsonpathMap, true);
             if (dataType(jmepsRes) !== "array") {
@@ -2172,6 +2180,7 @@
             } else if (optionKey === "projection") {
               this.transFilterPaths = transJsonpaths;
               this.transSortPaths = transJsonpaths;
+              this.transProjectionPaths = transJsonpaths;
             }
           }
         }
@@ -2181,9 +2190,9 @@
         if (event.currentTarget.innerText === "筛选") {
           this.jsonQueryMode = "jmespath";
           this.transOrSort = 'trans';
-          const realQueryOptions = this.__getRealJmesQueryOptions(false);
-          // 有可能是切换左右JSON，就重置一下基础路径
+          // 有可能是切换左右JSON，先重置基础路径，再获取查询选项
           this.queryOptions.path.field = "";
+          const realQueryOptions = this.__getRealJmesQueryOptions(false);
           const { isRight, editor } = this.__getEditorFromEvent(event);
           this.transJsonEditorName = isRight ? "JSON右" : "JSON左";
           // 不修改 jsonEditorActive，保持用户手动选择的状态
@@ -2214,6 +2223,10 @@
       },
       // 排序和转换
       async transJson() {
+        // 未选择编辑器时直接返回
+        if (!this.transJsonEditorName) {
+          return;
+        }
         let queryStrs = [];
         let queryOptions = this.__getRealJmesQueryOptions(false);
         // 如果有 path 选项，就要添加进去
@@ -2232,7 +2245,7 @@
           jmespath = this.jsonEditorRight.options.createQuery(this.jsonEditorRight.get(), queryOptionsNew);
         }
         // 把无条件的过滤清除
-        jmespath = jmespath.replaceAll(/\[\?\s*@\.[^\]]*\s*(==|!=|<|<=|>|>=)\s*""\s*\?\s*\]/g, "");
+        jmespath = jmespath.replaceAll(/\[\?\s*@\.\w+\s*(==|!=|<|<=|>|>=)\s*""\s*\?\s*\]/g, "");
         // 把这种语法错误修正：[*].[0].linePrice
         jmespath = jmespath.replaceAll(/\.(\[\d+\]?)/g, "$1");
         // 修复 sort 降序语法错误：sort_by(@, &field)[::-1] -> sort_by(@, &field) | reverse(@)
@@ -2261,7 +2274,7 @@
       },
       // 按key对json排序
       sortJsonByKey() {
-        if (this.sortOptions.field === ""){
+        if (!this.sortOptions.field){
           return;
         }
         let jsonData;
@@ -2289,6 +2302,11 @@
         jsonEditor.updateText(myJsonStringify(jsonData));
       },
       __sortJson(jsonData, jsonPath, direction) {
+        // direction 有效性检查
+        if (direction !== "asc" && direction !== "desc") {
+          return jsonData;
+        }
+
         let newJsonData = LosslessJSON.parse(LosslessJSON.stringify(jsonData));
         
         // 构建路径
@@ -2297,6 +2315,11 @@
         
         // 使用安全函数获取数据
         const oldData = safeGet(jsonData, pathStr);
+        
+        // 类型检查：只对普通对象进行 key 排序，null/undefined/数组/基本类型跳过
+        if (oldData === null || oldData === undefined || typeof oldData !== 'object' || Array.isArray(oldData)) {
+          return jsonData;
+        }
         
         if (direction === "asc") {  // 升序
           const sortedObjAsc = Object.keys(oldData)
@@ -3037,6 +3060,10 @@
             fields: []
           }
         };
+        // 同步重置关联的路径数组，避免下拉框显示过时选项
+        this.transFilterPaths = [];
+        this.transSortPaths = [];
+        this.transProjectionPaths = [];
         this.transJson();
       }
     },
