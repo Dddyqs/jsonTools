@@ -570,6 +570,23 @@
       },
       // AI判断查询模式
       async aiDetectQueryMode(queryStr) {
+        // 本地预判断：常见模式直接返回，无需调用 AI API
+        const trimmed = queryStr.trim();
+
+        // jq 特征：以 . 开头且不是 $，或包含 jq 管道/函数
+        if (/^\.\w/.test(trimmed) || /\b(map|select|group_by|sort_by|unique|flatten|length|keys|values|to_entries|from_entries|add|any|all)\b/.test(trimmed)) {
+          return 'jq';
+        }
+        // jmespath 特征：以 @ 开头，或包含 jmespath 特有语法
+        if (/^@/.test(trimmed) || /\[\?[\w.]+\s*[><=!]=/.test(trimmed) || /\b(contains|starts_with|ends_with|length)\b/.test(trimmed) && !/^\.\w/.test(trimmed)) {
+          return 'jmespath';
+        }
+        // jsonpath 特征：以 $ 开头
+        if (/^\$/.test(trimmed)) {
+          return 'jsonpath';
+        }
+
+        // 本地无法判断时，调用 AI
         try {
           const messages = [
             {
@@ -616,11 +633,8 @@
         let editor = editorOrEditorEl;
         // 判断是否是给的元素
         if (editorOrEditorEl.currentTarget) {
-          if ($(editorOrEditorEl.currentTarget).parents("#leftSection").length >= 1) {
-            editor = this.jsonEditorLeft;
-          } else {
-            editor = this.jsonEditorRight;
-          }
+          const { editor: eventEditor } = this.__getEditorFromEvent(editorOrEditorEl);
+          editor = eventEditor;
         }
         const jsonData = editor.getText();
         if (jsonData) {
@@ -632,11 +646,8 @@
         let editor = editorOrEditorEl;
         // 判断是否是给的元素
         if (editorOrEditorEl.currentTarget) {
-          if ($(editorOrEditorEl.currentTarget).parents("#leftSection").length >= 1) {
-            editor = this.jsonEditorLeft;
-          } else {
-            editor = this.jsonEditorRight;
-          }
+          const { editor: eventEditor } = this.__getEditorFromEvent(editorOrEditorEl);
+          editor = eventEditor;
         }
         const jsonData = LosslessJSON.parse(editor.getText());
         if (jsonData) {
@@ -1632,7 +1643,7 @@
         this.isBoxHidden.jsonEditorRightBox = false;
         this.jsonEditorRight.setMode("code");
         // 只有非自动生成的用户输入才记录历史
-        if (!this.isAutoFilledQuery && this.jsonQueryStrHistorys.indexOf(this.jsonQueryStr) == -1) {
+        if (!this.isAutoFilledQuery && !this.jsonQueryStrHistorys.includes(this.jsonQueryStr)) {
           this.jsonQueryStrHistorys.push(this.jsonQueryStr);
           this.jsonQueryStrList.unshift({ "value": this.jsonQueryStr });
         }
@@ -1756,7 +1767,7 @@
         this.jsonQueryMode = 'ai';
 
         // 保存历史记录（只有非自动生成的用户输入才记录）
-        if (!this.isAutoFilledQuery && this.jsonQueryStrHistorys.indexOf(this.jsonQueryStr) == -1) {
+        if (!this.isAutoFilledQuery && !this.jsonQueryStrHistorys.includes(this.jsonQueryStr)) {
           this.jsonQueryStrHistorys.push(this.jsonQueryStr);
           this.jsonQueryStrList.unshift({ "value": this.jsonQueryStr });
         }
@@ -1780,7 +1791,12 @@
           }
 
           // 大数据量时提取骨架结构
-          let jsonContent = JSON.stringify(jsonData);
+          let jsonContent;
+          try {
+            jsonContent = JSON.stringify(jsonData);
+          } catch (e) {
+            throw new Error('JSON数据序列化失败: ' + e.message);
+          }
           let skeleton = null;
           if (jsonContent.length > 50000) {
             skeleton = this.extractJsonSkeleton(jsonData);
@@ -1906,12 +1922,13 @@
           return data.length > maxItems ? [...sample, `... (${data.length - maxItems} more items)`] : sample;
         } else if (data !== null && typeof data === 'object') {
           const result = {};
-          const keys = Object.keys(data).slice(0, maxItems);
+          const allKeys = Object.keys(data);
+          const keys = allKeys.slice(0, maxItems);
           for (const key of keys) {
             result[key] = this.extractJsonSkeleton(data[key], maxItems);
           }
-          if (Object.keys(data).length > maxItems) {
-            result['...'] = `(${Object.keys(data).length - maxItems} more keys)`;
+          if (allKeys.length > maxItems) {
+            result['...'] = `(${allKeys.length - maxItems} more keys)`;
           }
           return result;
         }
