@@ -1,127 +1,70 @@
 // ==================== 基础工具函数 ====================
 // 注意：dataType 函数定义在 editorUtils.js 中，确保 editorUtils.js 先加载
 
+const _parsePath = function(path) {
+    if (!path || typeof path !== 'string') return null;
+    const cleanPath = path.replace(/^[a-zA-Z_$][a-zA-Z0-9_$]*\.?/, '');
+    if (!cleanPath) return [];
+    return cleanPath.split(/[\.\[\]]+/).filter(k => k !== '');
+};
+
+const _isNumericKey = function(key) {
+    return /^\d+$/.test(key);
+};
+
 // ==================== 安全工具函数 ====================
 
-/**
- * 安全地获取嵌套对象的属性值
- * @param {Object} obj - 目标对象
- * @param {string} path - 路径字符串，如 "jsonData.name.first" 或 "jsonData[0].name"
- * @returns {any} 属性值，如果不存在返回 undefined
- */
 const safeGet = function(obj, path) {
-    if (!path || typeof path !== 'string') return undefined;
-    
-    // 移除开头的变量名（如 "jsonData."）
-    const cleanPath = path.replace(/^[a-zA-Z_$][a-zA-Z0-9_$]*\.?/, '');
-    if (!cleanPath) return obj;
-    
-    // 解析路径：支持 "." 和 "[]" 两种形式
-    const keys = cleanPath.split(/[\.\[\]]+/).filter(k => k !== '');
+    const keys = _parsePath(path);
+    if (!keys || keys.length === 0) return obj;
     let current = obj;
-    
     for (const key of keys) {
         if (current === null || current === undefined) return undefined;
         current = current[key];
     }
-    
     return current;
 };
 
-/**
- * 安全地设置嵌套对象的属性值
- * @param {Object} obj - 目标对象
- * @param {string} path - 路径字符串，如 "jsonData.name.first" 或 "jsonData[0].name"
- * @param {any} value - 要设置的值
- * @returns {Object} 修改后的对象
- */
 const safeSet = function(obj, path, value) {
-    if (!path || typeof path !== 'string') return obj;
-    
-    // 移除开头的变量名（如 "jsonData."）
-    const cleanPath = path.replace(/^[a-zA-Z_$][a-zA-Z0-9_$]*\.?/, '');
-    if (!cleanPath) return obj;
-    
-    // 解析路径：支持 "." 和 "[]" 两种形式
-    const keys = cleanPath.split(/[\.\[\]]+/).filter(k => k !== '');
-    
-    if (keys.length === 0) return obj;
-    
+    const keys = _parsePath(path);
+    if (!keys || keys.length === 0) return obj;
     let current = obj;
-    
-    // 遍历到倒数第二个key，创建中间对象/数组
     for (let i = 0; i < keys.length - 1; i++) {
         const key = keys[i];
         const nextKey = keys[i + 1];
-        
-        // 如果当前key不存在，根据下一个key的类型决定创建对象还是数组
         if (!(key in current)) {
-            current[key] = /^\d+$/.test(nextKey) ? [] : {};
+            current[key] = _isNumericKey(nextKey) ? [] : {};
         }
-        
         current = current[key];
-        
         if (current === null || current === undefined) {
             return obj;
         }
     }
-    
-    // 设置最后一个key的值
-    const lastKey = keys[keys.length - 1];
-    current[lastKey] = value;
-    
+    current[keys[keys.length - 1]] = value;
     return obj;
 };
 
-/**
- * 安全地删除嵌套对象的属性
- * @param {Object} obj - 目标对象
- * @param {string} path - 路径字符串，如 "jsonData.name.first" 或 "jsonData[0].name"
- * @returns {Object} 修改后的对象
- */
 const safeDelete = function(obj, path) {
-    if (!path || typeof path !== 'string') return obj;
-    
-    // 移除开头的变量名（如 "jsonData."）
-    const cleanPath = path.replace(/^[a-zA-Z_$][a-zA-Z0-9_$]*\.?/, '');
-    if (!cleanPath) return obj;
-    
-    // 解析路径：支持 "." 和 "[]" 两种形式
-    const keys = cleanPath.split(/[\.\[\]]+/).filter(k => k !== '');
-    
-    if (keys.length === 0) return obj;
-    
+    const keys = _parsePath(path);
+    if (!keys || keys.length === 0) return obj;
     let current = obj;
-    
-    // 遍历到倒数第二个key
     for (let i = 0; i < keys.length - 1; i++) {
         const key = keys[i];
         if (!(key in current)) return obj;
         current = current[key];
         if (current === null || current === undefined) return obj;
     }
-    
-    // 删除最后一个key
     const lastKey = keys[keys.length - 1];
     if (Array.isArray(current)) {
         current.splice(parseInt(lastKey), 1);
     } else {
         delete current[lastKey];
     }
-    
     return obj;
 };
 
-/**
- * 安全地初始化嵌套对象的属性（如果不存在则创建）
- * @param {Object} obj - 目标对象
- * @param {string} path - 路径字符串
- * @param {any} defaultValue - 默认值，默认为空对象 {}
- * @returns {Object} 修改后的对象
- */
 const safeInit = function(obj, path, defaultValue = {}) {
-    const currentValue = safeGet(obj, path);
-    if (currentValue === undefined) {
+    if (safeGet(obj, path) === undefined) {
         safeSet(obj, path, defaultValue);
     }
     return obj;
@@ -178,47 +121,34 @@ const safeJsonStringify = function(obj, defaultValue = '{}') {
 
 // ==================== 原有工具函数 ====================
 
-// 将json嵌套对象展平为单层属性
+const _addFlattenResult = function(resultOne, propName, oneData) {
+    const type = dataType(oneData);
+    if (type === "bigint") {
+        resultOne[propName] = BigInt(`${oneData}`);
+    } else if (type === "number") {
+        resultOne[propName] = Number(oneData);
+    } else {
+        resultOne[propName] = oneData;
+    }
+};
+
 const flattenJsonDataOrArray = function (jsonData, prefix = "", result = []) {
-    if (dataType(jsonData) === "object") {
-        Object.keys(jsonData).forEach(oneKey => {
-            let resultOne = {};
-            const oneData = jsonData[oneKey];
-            const propName = prefix === "" ? oneKey : prefix + "." + oneKey;
-            if (dataType(oneData) === "object") {
-                flattenJsonDataOrArray(oneData, propName, result);
-            } else if (dataType(oneData) === "array") {
-                flattenJsonDataOrArray(oneData, propName, result);
+    const type = dataType(jsonData);
+    if (type === "object" || type === "array") {
+        const entries = type === "array" 
+            ? jsonData.map((v, i) => [String(i), v])
+            : Object.entries(jsonData);
+        entries.forEach(([key, value]) => {
+            const propName = prefix === "" ? key : prefix + "." + key;
+            const valueType = dataType(value);
+            if (valueType === "object" || valueType === "array") {
+                flattenJsonDataOrArray(value, propName, result);
             } else {
-                if (dataType(oneData) === "bigint") {
-                    resultOne[propName] = BigInt(`${oneData}`);
-                } else if (dataType(oneData) === "number") {
-                    resultOne[propName] = Number(oneData);
-                } else {
-                    resultOne[propName] = oneData;
-                }
+                const resultOne = {};
+                _addFlattenResult(resultOne, propName, value);
                 result.push(resultOne);
             }
-        })
-    } else if (dataType(jsonData) === "array") {
-        jsonData.forEach((oneData, index) => {
-            let resultOne = {};
-            const propName = prefix === "" ? String(index) : prefix + "." + index;
-            if (dataType(oneData) === "object") {
-                flattenJsonDataOrArray(oneData, propName, result);
-            } else if (dataType(oneData) === "array") {
-                flattenJsonDataOrArray(oneData, propName, result);
-            } else {
-                if (dataType(oneData) === "bigint") {
-                    resultOne[propName] = BigInt(`${oneData}`);
-                } else if (dataType(oneData) === "number") {
-                    resultOne[propName] = Number(oneData);
-                } else {
-                    resultOne[propName] = oneData;
-                }
-                result.push(resultOne);
-            }
-        })
+        });
     } else {
         const resultOne = {};
         resultOne[prefix] = jsonData;
@@ -343,53 +273,35 @@ const getJsonpathByLine = function (editor, row) {
 }
 
 
+const _propKeyToPath = function(propKeys) {
+    return propKeys.map(key => _isNumericKey(key) ? `[${key}]` : `.${key}`).join('');
+};
+
 const propertiesToJson = function (propsList) {
     let jsonData = undefined;
-    // 1. 用 = 把 oneArray 拆分为 key-value
     for (let i = 0; i < propsList.length; i++) {
         let prop = propsList[i].trim();
-        if (prop !== "") {
-            let pair = prop.split("=");
-            let propKeyStr = pair[0];
-            let propValueStr = pair[1];
-            // 解析 值的类型
-            if (/^\d{17,}$/.test(propValueStr)) {
-                propValueStr = BigInt(`${propValueStr}`);
-            } else if (/^\d{1,}\.\d+$/.test(propValueStr)) {
-                propValueStr = parseFloat(propValueStr);
-            } else if (/^\d{1,}$/.test(propValueStr)) {
-                propValueStr = parseInt(propValueStr);
-            } else if (/^true|false$/.test(propValueStr)) {
-                propValueStr = propValueStr === "true";
-            } else if (/^null$/.test(propValueStr)) {
-                propValueStr = null;
-            } else {
-                propValueStr = propValueStr;
-            }
-            
-            // 2. 用 propKey 拆分，并且构成 jsonData 的框架，然后再 填充 对应的 value
-            const propKeys = propKeyStr.split(".");
-            if (jsonData === undefined) {
-                // 根据第一个key的类型决定初始化对象还是数组
-                if (/^\d+$/.test(propKeys[0])) {
-                    jsonData = [];
-                } else {
-                    jsonData = {};
-                }
-            }
-            
-            // 构建路径字符串
-            let pathStr = propKeys.map(key => {
-                if (/^\d+$/.test(key)) {
-                    return `[${key}]`;
-                } else {
-                    return `.${key}`;
-                }
-            }).join('');
-            
-            // 使用安全函数设置值
-            safeSet(jsonData, pathStr, propValueStr);
+        if (prop === "") continue;
+        let pair = prop.split("=");
+        let propKeyStr = pair[0];
+        let propValueStr = pair[1];
+        if (/^\d{17,}$/.test(propValueStr)) {
+            propValueStr = BigInt(`${propValueStr}`);
+        } else if (/^\d{1,}\.\d+$/.test(propValueStr)) {
+            propValueStr = parseFloat(propValueStr);
+        } else if (/^\d{1,}$/.test(propValueStr)) {
+            propValueStr = parseInt(propValueStr);
+        } else if (/^true|false$/.test(propValueStr)) {
+            propValueStr = propValueStr === "true";
+        } else if (/^null$/.test(propValueStr)) {
+            propValueStr = null;
         }
+        const propKeys = propKeyStr.split(".");
+        if (jsonData === undefined) {
+            jsonData = _isNumericKey(propKeys[0]) ? [] : {};
+        }
+        const pathStr = _propKeyToPath(propKeys);
+        safeSet(jsonData, pathStr, propValueStr);
     }
     return jsonData;
 }

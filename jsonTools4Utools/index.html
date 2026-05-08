@@ -326,12 +326,31 @@
 <script src="./utils.js"></script>
 <!-- <script src="./MyJSONEditor.js"></script> -->
 <script>
+  // 预编译正则表达式（提升性能，避免重复编译）
+  const _RE = {
+    jmespath: [
+      /^@/, /\[\?\s*\(/, /^\s*\[\*\]/, /\|\s*sort_by\s*\(/, /\|\s*filter\s*\(/,
+      /\|\s*max_by\s*\(/, /\|\s*min_by\s*\(/, /\|\s*not_null\s*\(/, /\|\s*to_string\s*\(/,
+      /\|\s*to_number\s*\(/, /\.\s*@/, /\[\s*\*\s*\]/, /\[\s*\d+\s*:\s*\d*\s*\]/, /\[\s*\d+\s*:\s*:\s*\d+\s*\]/
+    ],
+    jq: [
+      /^\./, /\bmap\s*\(/, /\bselect\s*\(/, /\bgroup_by\s*\(/, /\bunique\s*\(/,
+      /\bsort\s*\(/, /\bflatten\s*\(/, /\bkeys\s*\(/, /\bvalues\s*\(/, /\bto_entries\s*\(/,
+      /\bfrom_entries\s*\(/, /\bwith_entries\s*\(/, /\badd\s*\(/, /\.\[\s*\]/, /\|\s*\./,
+      /\s+as\s+\$\w+\s*\|/, /\breduce\s+/, /\bforeach\s+/, /\/\/\s*\./, /\?\/\//,
+      /@base64\b/, /@uri\b/, /@csv\b/, /@tsv\b/, /@html\b/, /@json\b/, /@text\b/,
+      /\bif\s+.+\s+then\s+.+\s+(else\s+.+\s+)?end\b/, /\btry\s+/, /\bcatch\s+/
+    ],
+    imageUrl: /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?.*)?$/i,
+    msTimestamp: /^[1-9]\d{12}$/,
+    sTimestamp: /^[1-9]\d{9}$/
+  };
+
   // ace引入三方组件
   const beautify = ace.require("ace/ext/beautify");
   ace.require("ace/ext/language_tools");
   ace.require("ace/ext/searchbox");
 
-  // HTML 转义函数，防止 XSS
   function escapeHtml(str) {
     if (typeof str !== 'string') return str;
     return String(str)
@@ -511,101 +530,40 @@
       // 自动检测查询模式
       detectQueryMode(queryStr) {
         const str = queryStr.trim();
-        if (!str) return 'jsonpath'; // 默认 jsonpath
+        if (!str) return 'jsonpath';
 
-        // ========== JSONPath 检测 ==========
-        // 以 $ 开头是 jsonpath 的典型特征
         if (str.startsWith('$')) {
           return 'jsonpath';
         }
 
-        // ========== JMESPath 检测 ==========
-        // jmespath 特有语法
-        const jmespathPatterns = [
-          /^@/,                          // @ 当前节点
-          /\[\?\s*\(/,                   // [?( 过滤表达式
-          /^\s*\[\*\]/,                  // [*] 通配
-          /\|\s*sort_by\s*\(/,           // | sort_by(
-          /\|\s*filter\s*\(/,            // | filter(
-          /\|\s*max_by\s*\(/,            // | max_by(
-          /\|\s*min_by\s*\(/,            // | min_by(
-          /\|\s*not_null\s*\(/,          // | not_null(
-          /\|\s*to_string\s*\(/,         // | to_string(
-          /\|\s*to_number\s*\(/,         // | to_number(
-          /\.\s*@/,                      // .@ 当前节点引用
-          /\[\s*\*\s*\]/,                // [*] 数组通配
-          /\[\s*\d+\s*:\s*\d*\s*\]/,     // [start:end] 切片
-          /\[\s*\d+\s*:\s*:\s*\d+\s*\]/, // [start::step] 切片
-        ];
-        for (const pattern of jmespathPatterns) {
+        for (const pattern of _RE.jmespath) {
           if (pattern.test(str)) {
             return 'jmespath';
           }
         }
 
-        // ========== JQ 检测 ==========
-        // jq 特有语法
-        const jqPatterns = [
-          /^\./,                         // . 开头
-          /\bmap\s*\(/,                  // map(
-          /\bselect\s*\(/,               // select(
-          /\bgroup_by\s*\(/,             // group_by(
-          /\bunique\s*\(/,               // unique(
-          /\bsort\s*\(/,                 // sort(
-          /\bflatten\s*\(/,              // flatten(
-          /\bkeys\s*\(/,                 // keys(
-          /\bvalues\s*\(/,               // values(
-          /\bto_entries\s*\(/,           // to_entries(
-          /\bfrom_entries\s*\(/,         // from_entries(
-          /\bwith_entries\s*\(/,         // with_entries(
-          /\badd\s*\(/,                  // add(
-          /\.\[\s*\]/,                   // .[] 迭代
-          /\|\s*\./,                     // | . 管道后接选择器
-          /\s+as\s+\$\w+\s*\|/,          // as $var | 变量绑定
-          /\breduce\s+/,                 // reduce 结构
-          /\bforeach\s+/,                // foreach 结构
-          /\/\/\s*\./,                   // // 错误处理
-          /\?\/\//,                      // ?// 可选错误处理
-          /@base64\b/,                   // @base64 格式化
-          /@uri\b/,                      // @uri 格式化
-          /@csv\b/,                      // @csv 格式化
-          /@tsv\b/,                      // @tsv 格式化
-          /@html\b/,                     // @html 格式化
-          /@json\b/,                     // @json 格式化
-          /@text\b/,                     // @text 格式化
-          /\bif\s+.+\s+then\s+.+\s+(else\s+.+\s+)?end\b/, // if-then-else-end 结构
-          /\btry\s+/,                    // try 结构
-          /\bcatch\s+/,                  // catch 结构
-        ];
-        for (const pattern of jqPatterns) {
+        for (const pattern of _RE.jq) {
           if (pattern.test(str)) {
             return 'jq';
           }
         }
 
-        // ========== 默认 JSONPath 模式 ==========
-        // 无法识别的语法，默认使用 jsonpath（可能是自然语言，需要点击AI生成按钮）
         return 'jsonpath';
       },
       // AI判断查询模式
       async aiDetectQueryMode(queryStr) {
-        // 本地预判断：常见模式直接返回，无需调用 AI API
         const trimmed = queryStr.trim();
 
-        // jq 特征：以 . 开头且不是 $，或包含 jq 管道/函数
         if (/^\.\w/.test(trimmed) || /\b(map|select|group_by|sort_by|unique|flatten|length|keys|values|to_entries|from_entries|add|any|all)\b/.test(trimmed)) {
           return 'jq';
         }
-        // jmespath 特征：以 @ 开头，或包含 jmespath 特有语法
         if (/^@/.test(trimmed) || /\[\?[\w.]+\s*[><=!]=/.test(trimmed) || /\b(contains|starts_with|ends_with|length)\b/.test(trimmed) && !/^\.\w/.test(trimmed)) {
           return 'jmespath';
         }
-        // jsonpath 特征：以 $ 开头
         if (/^\$/.test(trimmed)) {
           return 'jsonpath';
         }
 
-        // 本地无法判断时，调用 AI
         try {
           const messages = [
             {
@@ -635,7 +593,7 @@
           return 'jsonpath';
         } catch (e) {
           console.error('AI判断失败:', e);
-          return 'jsonpath'; // 默认返回jsonpath
+          return 'jsonpath';
         }
       },
       // 关闭box
@@ -1203,7 +1161,6 @@
         try {
           const { isRight, editor, editorName, elId } = this.__getEditorFromEvent(event);
 
-          // 取数据
           let backupText = '';
           let rawData = null;
           try {
@@ -1211,7 +1168,7 @@
             if (rawData !== undefined && rawData !== null && rawData !== '') {
               backupText = myJsonStringify(rawData, null, 2);
             }
-          } catch(e) { /* get失败时尝试getText兜底 */ }
+          } catch(e) { }
 
           if (!backupText) {
             backupText = editor.getText() || '';
@@ -1223,7 +1180,6 @@
             return;
           }
 
-          // 销毁旧编辑器 → 新建为 code 模式
           try {
             try { editor.destroy(); } catch(e) { console.warn('destroy 可忽略:', e.message); }
 
@@ -1234,14 +1190,12 @@
             else { this.jsonEditorLeft = undefined; }
 
             const options = this.__createEditorOptions(elId);
-
             const newEditor = new JSONEditor(container, options);
             newEditor.setName(editorName);
 
             if (isRight) { this.jsonEditorRight = newEditor; }
             else { this.jsonEditorLeft = newEditor; }
 
-            // 设置数据
             try {
               aceEditorInsertData(newEditor.aceEditor, LosslessJSON.parse(backupText));
             } catch(setErr) {
@@ -1249,7 +1203,6 @@
               newEditor.updateText(backupText);
             }
 
-            // 更新状态
             if (isRight) {
               this.jsonRightClassNameMap = {};
               this.jsonRightClassNameMapStr = "";
@@ -1264,7 +1217,6 @@
               } catch(e) {}
             }
 
-            // 绑定事件（在设置数据之后绑定，避免 change 事件干扰）
             vm.__addEditorWatchEvent(editorName);
 
             console.log(`[setModeCode] ✓ ${editorName} 已切换为 code 模式（销毁重建方式）`);
@@ -1280,9 +1232,6 @@
         finish();
       },
 
-      // 切换为tree模式（code → tree）— 销毁旧编辑器，全新创建为 tree 模式
-      // 原因：vanilla-jsoneditor 的 setMode("tree") 在 Vue 环境中会因 DOM 竞态崩溃（removeChild 异常）
-      // 解决：直接绕开 setMode，用 destroy+新建 替代
       setModeTree(event) {
         if (this._isSwitchingMode) return;
         this._isSwitchingMode = true;
@@ -1293,7 +1242,6 @@
           const editorName = isRight ? "jsonEditorRight" : "jsonEditorLeft";
           const elId = isRight ? "jsonEditorRight" : "jsonEditorLeft";
 
-          // ===== 第1步：取数据（完全不改变编辑器状态）=====
           let rawData = null;
           try {
             rawData = editor.get();
@@ -1329,27 +1277,20 @@
             }
           }
 
-          // ===== 第1.5步：额外保存文本备份，防止 get() 返回的数据不完整 =====
           const backupText = myJsonStringify(rawData, null, 2);
           console.log('[setModeTree] 备份数据长度:', backupText.length);
 
-          // ===== 第2步：处理BigInt ======
           const safeData = this.__convertBigIntToString(rawData);
 
-          // ===== 第3步：销毁旧编辑器 → 新建为 tree 模式 ======
           try {
-            // 3a. 销毁旧实例
             try { editor.destroy(); } catch(e) { console.warn('destroy 可忽略:', e.message); }
 
-            // 3b. 清空容器 DOM
             const container = document.getElementById(elId);
             if (container) { container.innerHTML = ''; }
 
-            // 3c. 重置引用
             if (isRight) { this.jsonEditorRight = undefined; }
             else { this.jsonEditorLeft = undefined; }
 
-            // 3d. 创建新编辑器
             const options = this.__createEditorOptions(elId);
 
             const newEditor = new JSONEditor(container, options);
@@ -1358,17 +1299,14 @@
             if (isRight) { this.jsonEditorRight = newEditor; }
             else { this.jsonEditorLeft = newEditor; }
 
-            // 3e. 先切到 tree 模式，再设置数据（确保模式就绪后再写入）
             newEditor.setMode("tree");
 
-            // 使用 setTimeout 确保 setMode 完成后再 set 数据
             setTimeout(() => {
               try {
                 newEditor.set(safeData);
                 console.log(`[setModeTree] ✓ ${editorName} 数据已设置到 tree 模式`);
               } catch (setErr) {
                 console.error('[setModeTree] set() 失败，尝试 updateText 兜底:', setErr.message);
-                // 兜底：切回 code 模式用文本恢复
                 try {
                   newEditor.setMode("code");
                   newEditor.updateText(backupText);
@@ -1380,11 +1318,9 @@
                 }
               }
 
-              // 3f. 更新状态
               if (isRight) { this.jsonEditorRightMode = "tree"; }
               else { this.jsonEditorLeftMode = "tree"; }
 
-              // 3g. 绑定事件（在 set 数据之后绑定，避免 set 触发的 change 事件干扰）
               vm.__addEditorWatchEvent(editorName);
 
               console.log(`[setModeTree] ✓ ${editorName} 已切换为 tree 模式（销毁重建方式）`);
@@ -1478,9 +1414,7 @@
           editor.setText(myJsonStringify(jsonData));
         }
       },
-      // JSON转义并复制
-      toJsonAndCopy(event) {
-        let result = '';
+      async toJsonAndCopy(event) {
         try {
           const { editor } = this.__getEditorFromEvent(event);
           const text = editor.getText();
@@ -1490,15 +1424,11 @@
           }
           let jsonStr = myJsonStringify(LosslessJSON.parse(text), null, 0);
           if (jsonStr) {
-            result = myJsonStringify(jsonStr);
-            editor.setText(result);
-          }
-          if (result) {
+            editor.setText(myJsonStringify(jsonStr));
             if (typeof utools !== "undefined") {
-              utools.copyText(result);
-              this.$message.success('已复制到剪贴板');
+              utools.copyText(jsonStr);
             } else {
-              navigator.clipboard.writeText(result).then(() => {
+              navigator.clipboard.writeText(jsonStr).then(() => {
                 this.$message.success('已复制到剪贴板');
               }).catch(() => {
                 this.$message.error('复制失败');
@@ -1509,9 +1439,7 @@
           this.$message.error('JSON解析失败: ' + e.message);
         }
       },
-      // JSON反转义并复制
-      toObjectAndCopy(event) {
-        let result = '';
+      async toObjectAndCopy(event) {
         try {
           const { editor } = this.__getEditorFromEvent(event);
           const text = editor.getText();
@@ -1520,40 +1448,34 @@
             return;
           }
           let jsonData = LosslessJSON.parse(text);
+          let result;
           if (jsonData && dataType(jsonData) === "string") {
             result = myJsonStringify(LosslessJSON.parse(jsonData));
           } else {
             result = myJsonStringify(jsonData);
           }
           editor.setText(result);
-          if (result) {
-            if (typeof utools !== "undefined") {
-              utools.copyText(result);
+          if (typeof utools !== "undefined") {
+            utools.copyText(result);
+          } else {
+            navigator.clipboard.writeText(result).then(() => {
               this.$message.success('已复制到剪贴板');
-            } else {
-              navigator.clipboard.writeText(result).then(() => {
-                this.$message.success('已复制到剪贴板');
-              }).catch(() => {
-                this.$message.error('复制失败');
-              });
-            }
+            }).catch(() => {
+              this.$message.error('复制失败');
+            });
           }
         } catch (e) {
           this.$message.error('JSON解析失败: ' + e.message);
         }
       },
-      // tree模式下的搜索
       treeSearch(editorName) {
         const editor = editorName === "jsonEditorLeft" ? this.jsonEditorLeft : this.jsonEditorRight;
-        // Bug修复: 检查编辑器是否存在且处于 tree 模式
         if (!editor || editor.getMode() !== 'tree') return;
         
         const searchStr = editorName === "jsonEditorLeft" ? this.jsonLeftTreeSearchStr : this.jsonRightTreeSearchStr;
         const res = editor.search(searchStr);
         if (res && res.length > 0) {
-          res.forEach(el => {
-            el.node.expandPathToNode();
-          });
+          res.forEach(el => el.node.expandPathToNode());
         }
       },
       // 统一处理查询提交（自动判断是执行表达式还是AI处理）
@@ -1900,9 +1822,7 @@
       // 判断是否为图片URL
       isImageUrl(value) {
         if (typeof value !== 'string') return false;
-        // 匹配 http(s)://...图片后缀 的URL
-        const imagePattern = /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?.*)?$/i;
-        return imagePattern.test(value);
+        return _RE.imageUrl.test(value);
       },
       // 显示图片预览
       showImagePreview(targetEl, value) {
@@ -1960,18 +1880,14 @@
         const num = Number(value);
         if (isNaN(num)) return false;
 
-        // 毫秒时间戳：13位，范围 1970-2100年
-        // 秒时间戳：10位，范围 1970-2100年
         const now = Date.now();
-        const msThreshold = 1000 * 60 * 60 * 24 * 365 * 50; // 50年
+        const msThreshold = 1000 * 60 * 60 * 24 * 365 * 50;
 
-        // 毫秒时间戳 (使用普通数字比较)
-        if (num > 1000000000000 && num < 10000000000000) {
-          return Math.abs(num - now) < msThreshold;
+        if (_RE.msTimestamp.test(String(num)) && Math.abs(num - now) < msThreshold) {
+          return true;
         }
-        // 秒时间戳
-        if (num > 1000000000 && num < 10000000000) {
-          return Math.abs(num * 1000 - now) < msThreshold;
+        if (_RE.sTimestamp.test(String(num)) && Math.abs(num * 1000 - now) < msThreshold) {
+          return true;
         }
         return false;
       },
@@ -2015,9 +1931,7 @@
           tooltip.style.display = 'none';
         }
       },
-      // 隐藏元素（优化：缓存 DOM 引用，避免重复查询）
       hiddenBox() {
-        // 缓存 DOM 元素引用
         if (!this._cachedElements) {
           this._cachedElements = {
             rightSection: document.getElementById('rightSection'),
@@ -2029,7 +1943,6 @@
         }
         const els = this._cachedElements;
 
-        // 批量处理样式变更
         Object.keys(this.isBoxHidden).forEach(elName => {
           const el = document.getElementById(elName);
           if (el) {
@@ -2037,7 +1950,6 @@
           }
         });
 
-        // 处理布局联动
         const { aceEditorBox, jsonEditorRightBox, transSortBox } = this.isBoxHidden;
 
         if (aceEditorBox && jsonEditorRightBox) {
@@ -2057,17 +1969,14 @@
           els.jsonEditorLeftBox.style.height = transSortBox ? '100%' : '75%';
         }
 
-        // 重新渲染编辑器
         requestAnimationFrame(() => {
           if (this.jsonEditorLeft.aceEditor) this.jsonEditorLeft.aceEditor.resize();
           if (this.jsonEditorRight.aceEditor) this.jsonEditorRight.aceEditor.resize();
           this.aceEditor.resize();
         });
       },
-      // 收缩JSON
       foldAll(event) {
         const { editor } = this.__getEditorFromEvent(event);
-        // Bug修复: 检查编辑器是否存在
         if (!editor) return;
         if (editor.getMode() === "code") {
           editor.aceEditor.session.foldAll();
@@ -2075,10 +1984,8 @@
           editor.collapseAll();
         }
       },
-      // 展开JSON
       unfold(event) {
         const { editor } = this.__getEditorFromEvent(event);
-        // Bug修复: 检查编辑器是否存在
         if (!editor) return;
         if (editor.getMode() === "code") {
           editor.aceEditor.session.unfold();
@@ -2191,28 +2098,25 @@
       },
       // 打开筛选或排序
       async __openTransSortJsonBox(event) {
-        if (event.currentTarget.innerText === "筛选") {
+        const text = event.currentTarget.innerText;
+        if (text === "筛选") {
           this.jsonQueryMode = "jmespath";
           this.transOrSort = 'trans';
-          // 有可能是切换左右JSON，先重置基础路径，再获取查询选项
           this.queryOptions.path.field = "";
           const realQueryOptions = this.__getRealJmesQueryOptions(false);
           const { isRight, editor } = this.__getEditorFromEvent(event);
           this.transJsonEditorName = isRight ? "JSON右" : "JSON左";
-          // 不修改 jsonEditorActive，保持用户手动选择的状态
           const pathMap = isRight ? this.jsonpathRightMap : this.jsonpathLeftMap;
           this.transPaths = await this.__getTransJsonpaths(pathMap, false);
           await this.__updateTransJsonpaths(editor.get(), realQueryOptions);
-        } else if (event.currentTarget.innerText === "排序") {
+        } else if (text === "排序") {
           this.transOrSort = 'sort';
           this.sortPaths = ["all"];
           const { isRight, editor } = this.__getEditorFromEvent(event);
           this.transJsonEditorName = isRight ? "JSON右" : "JSON左";
-          // 不修改 jsonEditorActive，保持用户手动选择的状态
           const jsonData = editor.get();
           const pathMap = isRight ? this.jsonpathRightMap : this.jsonpathLeftMap;
           for (const [lineNum, jsonpath] of pathMap) {
-            // 使用安全函数替代 eval()
             const pathArray = JSONPath.JSONPath.toPathArray(jsonpath).slice(1);
             const pathStr = pathArray.map(p => `[${typeof p === 'number' ? p : `"${p}"`}]`).join('');
             const targetData = safeGet(jsonData, pathStr);
@@ -2227,52 +2131,40 @@
       },
       // 排序和转换
       async transJson() {
-        // 未选择编辑器时直接返回
         if (!this.transJsonEditorName) {
           return;
         }
         let queryStrs = [];
         let queryOptions = this.__getRealJmesQueryOptions(false);
-        // 如果有 path 选项，就要添加进去
         if (queryOptions.path && queryOptions.path.field.length > 0) {
           queryStrs.push(queryOptions.path.field);
         }
-        // 生成查询语句
-        let jmespath = "";
-        if (this.transJsonEditorName && this.transJsonEditorName === "JSON左") {
-          const queryOptionsNew = this.__getRealJmesQueryOptions();
-          // 无条件的过滤会有bug，需要手动改一下
-          jmespath = this.jsonEditorLeft.options.createQuery(this.jsonEditorLeft.get(), queryOptionsNew);
-        } else if (this.transJsonEditorName && this.transJsonEditorName === "JSON右") {
-          const queryOptionsNew = this.__getRealJmesQueryOptions();
-          // 无条件的过滤会有bug，需要手动改一下
-          jmespath = this.jsonEditorRight.options.createQuery(this.jsonEditorRight.get(), queryOptionsNew);
-        }
-        // 把无条件的过滤清除
+
+        const isLeft = this.transJsonEditorName === "JSON左";
+        const activeEditor = isLeft ? this.jsonEditorLeft : this.jsonEditorRight;
+        const queryOptionsNew = this.__getRealJmesQueryOptions();
+        let jmespath = activeEditor.options.createQuery(activeEditor.get(), queryOptionsNew);
+
         jmespath = jmespath.replaceAll(/\[\?\s*@\.\w+\s*(==|!=|<|<=|>|>=)\s*""\s*\?\s*\]/g, "");
-        // 把这种语法错误修正：[*].[0].linePrice
         jmespath = jmespath.replaceAll(/\.(\[\d+\]?)/g, "$1");
-        // 修复 sort 降序语法错误：sort_by(@, &field)[::-1] -> sort_by(@, &field) | reverse(@)
         jmespath = jmespath.replace(/sort_by\(([^,]+),\s*&([^)]+)\)\s*\[::-1\]/g, "sort_by($1, &$2) | reverse($1)");
+
         if (jmespath.length > 0 && jmespath !== "@") {
           queryStrs.push(jmespath);
         }
-        // 组合查询语句
+
         if (Object.keys(queryOptions).length === 0) {
           this.jsonQueryStr = "@";
-          // 如果只有一个path，就不用管 filter、sort、projection
         } else if (Object.keys(queryOptions).length === 1 && queryOptions.path) {
           if (queryOptions.path.field.length === 0) {
             this.jsonQueryStr = "@";
           } else {
-            // 确保 path 以 @ 开头，避免 JMESPath 解析错误
             const pathField = queryOptions.path.field;
             this.jsonQueryStr = pathField.startsWith('@') ? pathField : '@.' + pathField;
           }
         } else {
           this.jsonQueryStr = queryStrs.join(" | ");
         }
-        // 标记为自动填充的查询，避免记录历史
         this.isAutoFilledQuery = true;
         await this.getJsonByQuery();
       },
@@ -2281,16 +2173,10 @@
         if (!this.sortOptions.field){
           return;
         }
-        let jsonData;
-        let jsonEditor;
-        if (this.transJsonEditorName && this.transJsonEditorName === "JSON左") {
-          jsonEditor = this.jsonEditorLeft;
-          jsonData = LosslessJSON.parse(this.jsonEditorLeft.aceEditor.getValue());
-        } else if (this.transJsonEditorName && this.transJsonEditorName === "JSON右") {
-          jsonEditor = this.jsonEditorRight;
-          jsonData = LosslessJSON.parse(this.jsonEditorRight.aceEditor.getValue());
-        }
-        // 如果没有获取到编辑器或数据，直接返回
+        const isLeft = this.transJsonEditorName === "JSON左";
+        const jsonEditor = isLeft ? this.jsonEditorLeft : this.jsonEditorRight;
+        let jsonData = LosslessJSON.parse(jsonEditor.aceEditor.getValue());
+
         if (!jsonEditor || !jsonData) {
           return;
         }
@@ -2301,7 +2187,7 @@
             if (sortPath !== "all") {
               jsonData = this.__sortJson(jsonData, sortPath, this.sortOptions.direction);
             }
-          })
+          });
         }
         jsonEditor.updateText(myJsonStringify(jsonData));
       },
@@ -2352,23 +2238,16 @@
         // 执行排序
         this.sortJsonByFieldKey(this.sortFieldKeyDirection);
       },
-      // 按字段Key（属性名）字母顺序排序
       sortJsonByFieldKey(direction = 'asc') {
         let jsonData;
         let jsonEditor;
-        // 判断当前激活的编辑器
-        if (this.jsonEditorActive === "右") {
-          jsonEditor = this.jsonEditorRight;
-          jsonData = LosslessJSON.parse(this.jsonEditorRight.getText(), myLosslessJSONReviver);
-        } else {
-          jsonEditor = this.jsonEditorLeft;
-          jsonData = LosslessJSON.parse(this.jsonEditorLeft.getText(), myLosslessJSONReviver);
-        }
-        // 如果没有获取到编辑器或数据，直接返回
+        const isRight = this.jsonEditorActive === "右";
+        jsonEditor = isRight ? this.jsonEditorRight : this.jsonEditorLeft;
+        jsonData = LosslessJSON.parse(jsonEditor.getText(), myLosslessJSONReviver);
+
         if (!jsonEditor || !jsonData) {
           return;
         }
-        // 递归排序对象的所有key
         const sortedData = this.__sortJsonByKeys(jsonData, direction);
         jsonEditor.updateText(myJsonStringify(sortedData, null, 2));
       },
@@ -2406,7 +2285,6 @@
         }, 500);
       },
       // 对比JSON文本，得出对应的差异，并且渲染 jsonEditorLeft 的颜色
-      // 优化版本：减少 JSONPath 查询次数，使用 Map 替代 indexOf，使用 structuredClone 替代 parse/stringify
       jsonDiff() {
         this.__clearDiffClass();
         const leftText = this.jsonEditorLeft.getText();
@@ -2416,7 +2294,6 @@
           return;
         }
 
-        // 重置数据
         this.jsonEditorLeftDiffData = {};
         this.jsonEditorLeftDiffLineData = {};
         this.jsonEditorRightDiffData = {};
@@ -2424,7 +2301,6 @@
         this.jsonFormat(this.jsonEditorLeft);
         this.jsonFormat(this.jsonEditorRight);
 
-        // Bug修复: 添加 try-catch 处理 JSON 解析错误
         let jsonEditorLeftData, jsonEditorRightData;
         try {
           jsonEditorLeftData = LosslessJSON.parse(leftText);
@@ -2434,7 +2310,6 @@
           return;
         }
 
-        // 预构建路径到值的映射，避免重复 JSONPath 查询
         const leftValueMap = this.__buildPathValueMap(jsonEditorLeftData, this.jsonEditorLeftJsonpathLineDict);
         const rightValueMap = this.__buildPathValueMap(jsonEditorRightData, this.jsonEditorRightJsonpathLineDict);
 
@@ -2443,35 +2318,31 @@
         this.isBoxHidden.jsonEditorRightBox = false;
         this.isBoxHidden.aceEditorBox = true;
 
-        this.jsonDiffPatchList = [];
         const jsonDiffPatchList = jsonpatch.compare(jsonEditorLeftData, jsonEditorRightData);
         this.jsonDiffPatchList = jsonDiffPatchList;
 
-        // 使用 Map 加速路径查找
         const leftPathToIndex = new Map(Object.keys(this.jsonEditorLeftJsonpathLineDict).map((k, i) => [k, i]));
         const rightPathToIndex = new Map(Object.keys(this.jsonEditorRightJsonpathLineDict).map((k, i) => [k, i]));
 
-        const dmp = new diff_match_patch(); // 移到循环外，避免重复创建
+        const dmp = new diff_match_patch();
 
         jsonDiffPatchList.forEach(oneDiffPatch => {
           const diffPath = "$" + oneDiffPatch.path.replaceAll("/", ".");
           const leftIndex = leftPathToIndex.get(diffPath) ?? -1;
           const rightIndex = rightPathToIndex.get(diffPath) ?? -1;
 
-          // 获取值（从预构建的 Map 中读取，O(1)）
-          let leftValue = leftValueMap.get(diffPath);
-          let rightValue = rightValueMap.get(diffPath);
-          let leftValueType = dataType(leftValue);
-          let rightValueType = dataType(rightValue);
+          const leftValue = leftValueMap.get(diffPath);
+          const rightValue = rightValueMap.get(diffPath);
+          const leftValueType = dataType(leftValue);
+          const rightValueType = dataType(rightValue);
 
-          // 处理不同类型的 diff
           if (oneDiffPatch.op === "remove") {
             this.__processRemoveDiff(diffPath, leftIndex, rightIndex, leftValue, leftValueType,
               leftValueMap, rightValueMap, leftPathToIndex, rightPathToIndex, dmp);
           } else if (oneDiffPatch.op === "add") {
             this.__processAddDiff(diffPath, leftIndex, rightIndex, rightValue, rightValueType,
               leftValueMap, rightValueMap, leftPathToIndex, rightPathToIndex, dmp);
-          } else { // replace
+          } else {
             this.__processReplaceDiff(diffPath, leftValue, leftValueType, rightValue, rightValueType, dmp);
           }
         });

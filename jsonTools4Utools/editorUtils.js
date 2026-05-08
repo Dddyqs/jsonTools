@@ -34,38 +34,33 @@ const myLosslessJSONReplacer = function (key, value) {
 
 const myLosslessJSONReviver = function (key, value) {
     if (value && value.isLosslessNumber === true
-        && Array.isArray(Object.keys(value)) && Object.keys(value).length === 2
+        && Object.keys(value).length === 2
         && "isLosslessNumber" in value && "value" in value
         && dataType(value.value) === "string") {
-        if (value.value.length > 16 && !value.value.includes("e+") && !value.value.includes(".")) {
-            return BigInt(value.value);
-        } else if (value.value.length > 16 && value.value.includes("e+")) {
-            return `${value.value}`;
-        } else {
-            // return new LosslessJSON.LosslessNumber(value.value);
-            return Number(value.value);
+        const val = value.value;
+        if (val.length > 16 && !val.includes("e+") && !val.includes(".")) {
+            return BigInt(val);
+        } else if (val.length > 16 && val.includes("e+")) {
+            return val;
         }
-    } else {
-        return value;
+        return Number(val);
     }
+    return value;
 }
 
-// 转为 "<Long>value</Long>" 格式的 JSON 字符串, 方便在 JSONString 后面替换掉
 const myJsonReviverLong = function (key, value) {
     if (value && value.isLosslessNumber === true) {
-        if (value.value.length > 16 && !value.value.includes("e+") && !value.value.includes(".")) {
-            return `<Long>${value.value}</Long>`;
-        } else if (value.value.length > 16 && value.value.includes("e+")) {
-            return `${value.value}`;
-        } else if (value.value.includes(".") && value.value.endsWith("0")) {
-            return `<Long>${value.value}</Long>`;
-        } else {
-            // return new LosslessJSON.LosslessNumber(value.value);
-            return value.value;
+        const val = value.value;
+        if (val.length > 16 && !val.includes("e+") && !val.includes(".")) {
+            return `<Long>${val}</Long>`;
+        } else if (val.length > 16 && val.includes("e+")) {
+            return val;
+        } else if (val.includes(".") && val.endsWith("0")) {
+            return `<Long>${val}</Long>`;
         }
-    } else {
-        return value;
+        return val;
     }
+    return value;
 }
 
 const cleanLongXML = function (jsonStr) {
@@ -96,23 +91,17 @@ const aceEditorInsertData = function (aceEditor, data, skipGotoLine = false) {
     const selection = aceEditor.getSelectionRange();
     const row = selection.end.row;
     const column = selection.end.column;
-    // 方案1：优先尝试使用 getFullDocumentRange
     let range;
-    try {
-        // 部分 Ace 版本中方法命名为 getFullDocumentRange()
-        range = aceEditor.session.getFullDocumentRange();
-    } catch (e) {
-        // 方案2：手动构造完整范围
-        const lineCount = aceEditor.session.getLength();
-        if (lineCount === 0) {
-            range = { start: { row: 0, column: 0 }, end: { row: 0, column: 0 } };
-        } else {
+    const lineCount = aceEditor.session.getLength();
+    if (lineCount === 0) {
+        range = { start: { row: 0, column: 0 }, end: { row: 0, column: 0 } };
+    } else {
+        try {
+            range = aceEditor.session.getFullDocumentRange();
+        } catch (e) {
             const lastLineIndex = lineCount - 1;
             const lastLineLength = aceEditor.session.getLine(lastLineIndex).length;
-            range = {
-                start: { row: 0, column: 0 },
-                end: { row: lastLineIndex, column: lastLineLength }
-            };
+            range = { start: { row: 0, column: 0 }, end: { row: lastLineIndex, column: lastLineLength } };
         }
     }
     let targetData = data;
@@ -120,13 +109,11 @@ const aceEditorInsertData = function (aceEditor, data, skipGotoLine = false) {
         targetData = LosslessJSON.parse(data);
     }
     const jsonStr = myJsonStringify(targetData, null, 2);
-    // 行数一样多，数据才是准确的
     if (jsonStr.split("\n").length === range.end.row + 1) {
         aceEditor.session.replace(range, jsonStr);
     } else {
         aceEditor.setValue(jsonStr);
     }
-    // 可选：保持光标位置（默认跳过，避免触发光标变化事件）
     if (!skipGotoLine) {
         aceEditor.gotoLine(row + 1, column);
     }
