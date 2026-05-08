@@ -1,5 +1,64 @@
-/* ==================== 基础样式 ==================== */
+/* ==================== CSS 变量系统 ==================== */
+:root {
+  /* 主题色 */
+  --color-primary: #67C23A;
+  --color-primary-light: #85CE61;
+  --color-primary-dark: #5BAF2A;
+  --color-primary-bg: rgba(103, 194, 58, 0.1);
 
+  /* 文字色 */
+  --color-text-primary: #303133;
+  --color-text-regular: #606266;
+  --color-text-secondary: #909399;
+  --color-text-placeholder: #C0C4CC;
+  --color-text-inverse: #FFFFFF;
+
+  /* 边框色 */
+  --color-border-base: #DCDFE6;
+  --color-border-light: #E4E7ED;
+  --color-border-lighter: #EBEEF5;
+  --color-border-extra-light: #F2F6FC;
+
+  /* 背景色 */
+  --color-bg-base: #F1FBFB;
+  --color-bg-white: #FFFFFF;
+  --color-bg-page: #F5F7FA;
+  --color-bg-overlay: #FFFFFF;
+
+  /* Diff 颜色 */
+  --color-diff-add-bg: rgba(85, 222, 17, 0.18);
+  --color-diff-add-str: rgba(103, 195, 58, 0.62);
+  --color-diff-remove-bg: rgba(246, 139, 131, 0.18);
+  --color-diff-remove-str: rgba(245, 108, 108, 0.56);
+  --color-diff-replace-bg: rgba(246, 219, 131, 0.47);
+  --color-diff-highlight: #E6A23C;
+
+  /* 菜单色 */
+  --color-menu-bg: #91B770;
+  --color-menu-border: #91B770;
+  --color-menu-text: #E9F0E2;
+
+  /* 尺寸 */
+  --spacing-xs: 2px;
+  --spacing-sm: 4px;
+  --spacing-md: 8px;
+  --spacing-lg: 12px;
+  --spacing-xl: 20px;
+
+  --font-size-xs: 11px;
+  --font-size-sm: 12px;
+  --font-size-base: 14px;
+  --font-size-md: 15px;
+
+  --border-radius-sm: 3px;
+  --border-radius-base: 4px;
+  --border-radius-md: 8px;
+
+  --height-mini: 22px;
+  --height-small: 28px;
+}
+
+/* ==================== 基础样式 ==================== */
 * {
   margin: 0;
   padding: 0;
@@ -8,10 +67,9 @@
   word-break: break-all;
 }
 
-html,
-body {
+html, body {
   height: 100%;
-  background-color: #f1fbfb;
+  background-color: var(--color-bg-base);
   overflow: hidden;
 }
 
@@ -28,26 +86,39 @@ body {
 }
 
 /* ==================== 功能栏样式 ==================== */
-
 #funcsBar {
-  margin-top: 1px !important;
-  margin-bottom: 1px !important;
-  margin-left: 20px !important;
-  margin-right: 20px !important;
-  display: flex !important;
-  justify-content: flex-start !important;
-  align-items: center !important;
-  padding: 4px 5px !important;
-  gap: 8px !important;
-  flex-wrap: wrap !important;
+  margin: 1px 20px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  gap: var(--spacing-sm);
   height: auto !important;
   line-height: normal !important;
+  flex-wrap: wrap;
 }
 
+.funcsBar {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+}
 
+.funcsBarRow {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  overflow: hidden;
+}
+
+.funcsBarItem {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-shrink: 0;
+}
 
 /* ==================== 布局样式 ==================== */
-
 .leftSection {
   width: 49.6%;
   display: flex;
@@ -68,8 +139,8 @@ body {
   display: flex;
   flex-direction: column;
   flex: 1;
-  background-color: #ffffff;
-  border: 1px solid #ddd;
+  background-color: var(--color-bg-white);
+  border: 1px solid var(--color-border-base);
   min-height: 0;
   overflow: hidden;
 }
@@ -78,7 +149,7 @@ body {
   display: flex;
   flex: 1;
   flex-direction: column;
-  background-color: #ffffff;
+  background-color: var(--color-bg-white);
 }
 
 .rightSection {
@@ -90,30 +161,27 @@ body {
 }
 
 /* ==================== 分割条样式 ==================== */
-
-/* 垂直分割条 */
-.drag-vertical {
+.drag-vertical,
+.drag-horizontal {
   width: 3px;
   cursor: col-resize;
   position: relative;
   z-index: 2;
+  will-change: transform;
+  transform: translateZ(0);
 }
 
-/* 水平分割条 */
 .drag-horizontal {
+  width: auto;
   height: 3px;
   cursor: row-resize;
-  position: relative;
-  z-index: 2;
 }
 
 /* ==================== JSON Editor 样式 ==================== */
-
 .jsoneditor {
-  border: thin solid #c0c4cc;
+  border: thin solid var(--color-border-base);
 }
 
-/* 编辑器面板 */
 #jsonEditorRight,
 #jsonEditorLeft,
 #sortMain {
@@ -122,7 +190,6 @@ body {
   min-height: 0;
 }
 
-/* Ace Editor */
 #aceEditorMenu {
   flex-shrink: 0;
 }
@@ -133,151 +200,141 @@ body {
   min-height: 0;
 }
 
-/* 固定高度，防止 tree 模式下挤压 */
 .jsoneditor-tree-inner {
   min-height: 148px;
   flex: 1;
   overflow: auto;
+  scroll-behavior: smooth;
 }
 
 .panel {
-  border: 1px solid #ddd;
-  padding: 20px;
+  border: 1px solid var(--color-border-base);
+  padding: var(--spacing-xl);
   overflow: auto;
 }
 
 #leftSection,
 #jsonEditorRightBox,
 #transSortBox {
-  border: 1px solid #ddd;
+  border: 1px solid var(--color-border-base);
 }
 
 .jsoneditor-vue {
   height: 100%;
 }
 
-/* ==================== Element UI 自定义 ==================== */
-
-.el-textarea__inner {
-  color: #000000;
-}
-
-.el-button+.el-button {
-  margin-left: 3px;
-}
-
-.el-button--mini {
-  padding: 3px;
-  margin-left: 4px;
-  font-size: 14px;
-}
-
-.jsonQuery {
-  display: inline-flex;
-  margin-left: 3px;
-  max-width: 900px;
-  flex-shrink: 0;
-  vertical-align: middle;
-}
-
-/* 输入框 + 执行按钮 统一 mini 高度 */
-.jsonQuery .el-input-group,
-.jsonQuery .el-input__inner,
-.jsonQuery .el-input-group__append,
-.jsonQuery .el-input-group__append .el-button {
-  height: 28px !important;
-  line-height: 28px !important;
-  box-sizing: border-box !important;
-}
-.jsonQuery .el-input-group__append .el-button {
-  padding: 0 12px !important;
-}
-
-/* 调整查询方式下拉框选项的内边距 */
-.el-select-dropdown__item {
-  padding: 0 5px !important;
-}
-
-/* 调整选中后显示文字的内边距 */
-.el-input__inner {
-  padding: 0 5px !important;
-}
-
-/* 调整下拉框按钮的右内边距 */
-.el-input-group__prepend .el-select .el-input__inner {
-  padding-right: 20px !important;
-  text-align: center !important;
-}
-
-#jsonQuery {
-  display: inline-flex;
-  height: auto;
-  padding-left: 3px;
-  padding-right: 3px;
-  color: #000000;
-}
-
-.el-input-group {
-  height: auto;
+.jsoneditor,
+.aceEditor {
+  contain: layout style;
 }
 
 /* ==================== 编辑器菜单样式 ==================== */
-
 .editorMenu {
   display: flex;
   width: 100%;
   height: 30px;
   margin: 0;
   box-sizing: border-box;
-  color: #fff;
-  background-color: #91b770;
-  border-bottom: 1px solid #91b770;
+  color: var(--color-menu-text);
+  background-color: var(--color-menu-bg);
+  border-bottom: 1px solid var(--color-menu-border);
   align-items: center;
+  position: relative;
 }
 
-#editorMenu>.el-select>.el-input {
-  padding: 2px;
+#editorMenu > .el-select > .el-input {
+  padding: var(--spacing-xs);
 }
 
 #editorMenu input {
-  font-size: 15px;
+  font-size: var(--font-size-md);
   padding-left: 10px;
 }
 
 .editorMenuBtn {
-  background-color: rgba(255, 255, 255, 0);
-  padding: 2px;
+  background-color: transparent;
+  padding: var(--spacing-xs);
   border-radius: 0;
-  color: #e9f0e2;
+  color: var(--color-menu-text);
   border: 0;
   font-weight: 600;
 }
 
-/* tree 模式搜索输入框：默认窄，聚焦时自动展开 */
+.editorMenuLabel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--height-mini);
+  height: var(--height-mini);
+  padding: 0 var(--spacing-xs);
+  font-size: var(--font-size-xs);
+  font-weight: bold;
+  color: var(--color-menu-text);
+}
+
+.editorMenuLabel--primary {
+  color: var(--color-primary);
+}
+
 .tree-search-input {
-  margin-left: 5px;
+  margin-left: var(--spacing-sm);
   width: 70px;
   max-width: 360px;
   transition: width 0.3s ease;
   vertical-align: middle;
 }
+
 .tree-search-input:focus-within,
 .tree-search-input:hover {
   width: 260px;
 }
 
 .el-dropdown-menu__item {
-  line-height: 15px;
-  margin-top: 4px;
+  line-height: var(--spacing-md);
+  margin-top: var(--spacing-sm);
 }
 
-/* ==================== 字体设置 ==================== */
+.editorMenuClose {
+  margin-left: auto;
+  cursor: pointer;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  color: var(--color-menu-text);
+}
 
-/* 设置字体，消除特殊字符光标错位 - 已在全局 * 选择器中定义 */
+.editorMenuClose i {
+  font-size: var(--font-size-base);
+}
+
+.editorMenuSep {
+  color: var(--color-menu-text);
+  opacity: 0.6;
+  margin: 0 var(--spacing-xs);
+}
+
+.editorMenuIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 var(--spacing-xs);
+  margin-right: var(--spacing-sm);
+  font-size: 10px;
+  font-weight: bold;
+  color: var(--color-menu-text);
+}
+
+.editorMenuIcon i {
+  font-size: 10px;
+}
+
+.editorMenuItem {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
 
 /* ==================== Tree 模式样式 ==================== */
-
-/* treepath checkbox 居中 */
 #jsonEditorRightBox tr td:first-child:not([class=jsoneditor-tree]) {
   text-align: center;
   vertical-align: middle;
@@ -289,22 +346,20 @@ div.jsoneditor-tree table.jsoneditor-tree {
 }
 
 .editorTreeTb {
-  margin: 5px;
+  margin: var(--spacing-sm);
   display: flex;
 }
 
 /* ==================== Diff 对比样式 ==================== */
-
 .el-badge__content.is-fixed {
   transform: translateY(-50%) translateX(50%);
   z-index: 9999;
 }
 
-/* 当前聚焦的差异行 — 闪烁高亮 */
 .diff-current-highlight {
-  animation: diffFlash 1.5s ease-in-out 2 !important;
-  outline: 2px solid #E6A23C !important;
-  outline-offset: -2px !important;
+  animation: diffFlash 1.5s ease-in-out 2;
+  outline: 2px solid var(--color-diff-highlight);
+  outline-offset: -2px;
 }
 
 @keyframes diffFlash {
@@ -314,114 +369,140 @@ div.jsoneditor-tree table.jsoneditor-tree {
   75% { background-color: rgba(230, 162, 60, 0.35); }
 }
 
-.addDiffLine {
-  background-color: #55de112e;
-}
-
-.addDiffStr {
-  background-color: #67c23a9e;
-}
-
+.addDiffLine { background-color: var(--color-diff-add-bg); }
+.addDiffStr { background-color: var(--color-diff-add-str); }
 .removeDiffLine {
-  background-color: #f68b832e;
+  background-color: var(--color-diff-remove-bg);
   word-break: normal;
 }
-
-.removeDiffStr {
-  background-color: #f56c6c8f;
-}
-
+.removeDiffStr { background-color: var(--color-diff-remove-str); }
 .replaceDiffLine {
-  background-color: #f6db8378;
+  background-color: var(--color-diff-replace-bg);
   word-break: normal;
 }
 
-/* ==================== 其他样式 ==================== */
-
+/* ==================== 按钮样式 ==================== */
 span {
   user-select: text;
   pointer-events: auto;
+}
+
+.el-button + .el-button {
+  margin-left: var(--spacing-xs);
+}
+
+.el-button--mini {
+  padding: var(--spacing-xs);
+  margin-left: var(--spacing-sm);
+  font-size: var(--font-size-base);
+}
+
+.editorMenu .el-button--primary {
+  color: var(--color-menu-text);
+  border-color: transparent;
+  background-color: transparent;
+}
+
+.editorMenu .el-button--primary:hover {
+  color: var(--color-text-inverse);
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+/* 选中状态 */
+.modeActive {
+  background-color: var(--color-primary) !important;
+  border-color: var(--color-primary) !important;
+  color: var(--color-text-inverse) !important;
+}
+
+/* ==================== 表单样式 ==================== */
+.el-textarea__inner {
+  color: var(--color-text-primary);
 }
 
 .el-autocomplete {
   width: 100%;
 }
 
-/* 选中的模式 — 绿色 */
-.modeActive {
-  background-color: #67C23A !important;
-  border-color: #67C23A !important;
-  color: #fff !important;
-}
-
-/* 编辑器菜单栏按钮：覆盖 primary 蓝色为绿色系 */
-.editorMenu .el-button--primary {
-  color: #e9f0e2;
-  border-color: transparent;
-  background-color: transparent;
-}
-.editorMenu .el-button--primary:hover {
-  color: #fff;
-  background-color: rgba(255, 255, 255, 0.15);
-}
-
-/* JSON Editor 编程语言颜色 */
-.ace-jsoneditor .ace_constant.ace_language {
-  color: #0087ff;
-}
-
 .el-form-item--mini.el-form-item,
 .el-form-item--small.el-form-item {
-  margin: 4px;
+  margin: var(--spacing-sm);
 }
 
-/* ==================== 响应式优化 ==================== */
-
-@media (max-width: 1200px) {
-  .leftSection {
-    width: 45%;
-  }
-  
-  #funcsBar {
-    margin-left: 10px !important;
-    margin-right: 10px !important;
-  }
+.el-input__inner {
+  padding: 0 var(--spacing-xs) !important;
 }
 
-@media (max-width: 768px) {
-  .leftSection {
-    width: 100%;
-  }
-  
-  .rightSection {
-    display: none;
-  }
+.el-select-dropdown__item {
+  padding: 0 var(--spacing-xs) !important;
 }
 
-/* ==================== 性能优化 ==================== */
-
-/* GPU 加速 */
-.drag-vertical,
-.drag-horizontal {
-  will-change: transform;
-  transform: translateZ(0);
+/* ==================== 查询框样式 ==================== */
+.jsonQuery {
+  display: inline-flex;
+  margin-left: var(--spacing-xs);
+  max-width: 900px;
+  flex-shrink: 0;
+  vertical-align: middle;
 }
 
-/* 平滑滚动 */
-.jsoneditor-tree-inner {
-  scroll-behavior: smooth;
+.jsonQuery .el-input-group,
+.jsonQuery .el-input__inner,
+.jsonQuery .el-input-group__append,
+.jsonQuery .el-input-group__append .el-button {
+  height: var(--height-small) !important;
+  line-height: var(--height-small) !important;
+  box-sizing: border-box !important;
 }
 
-/* 减少重绘 */
-.jsoneditor,
-.aceEditor {
-  contain: layout style;
+.jsonQuery .el-input-group__append .el-button {
+  padding: 0 12px !important;
+}
+
+.el-input-group-prepend .el-select .el-input__inner {
+  padding-right: 20px !important;
+  text-align: center !important;
+}
+
+#jsonQuery {
+  display: inline-flex;
+  height: auto;
+  padding-left: var(--spacing-xs);
+  padding-right: var(--spacing-xs);
+  color: var(--color-text-primary);
+}
+
+.el-input-group {
+  height: auto;
+}
+
+.queryExecuteBtn {
+  min-width: 72px;
+  background-color: var(--color-primary) !important;
+  color: var(--color-text-inverse) !important;
+  border-color: var(--color-primary) !important;
+}
+
+.queryItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.queryItemText {
+  flex: 1;
+}
+
+.queryItemDelete {
+  padding: 0;
+  margin-left: 10px;
+  color: var(--color-text-secondary);
 }
 
 /* ==================== AI 助手对话框样式 ==================== */
-
 .ai-dialog .el-dialog__body {
-  padding: 10px 20px 20px;
+  padding: var(--spacing-md) var(--spacing-xl) var(--spacing-xl);
 }
 
 .ai-chat-container {
@@ -433,14 +514,14 @@ span {
 .ai-messages {
   flex: 1;
   overflow-y: auto;
-  padding: 10px;
-  background-color: #f5f7fa;
-  border-radius: 4px;
-  margin-bottom: 15px;
+  padding: var(--spacing-md);
+  background-color: var(--color-bg-page);
+  border-radius: var(--border-radius-base);
+  margin-bottom: var(--spacing-md);
 }
 
 .ai-message {
-  margin-bottom: 12px;
+  margin-bottom: var(--spacing-md);
   max-width: 85%;
 }
 
@@ -455,40 +536,40 @@ span {
 
 .ai-message-content {
   display: inline-block;
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-size: 14px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--border-radius-md);
+  font-size: var(--font-size-base);
   line-height: 1.5;
   word-break: break-word;
 }
 
 .ai-message.user .ai-message-content {
-  background-color: #409eff;
+  background-color: #409EFF;
   color: white;
   text-align: left;
 }
 
 .ai-message.assistant .ai-message-content {
-  background-color: white;
-  color: #333;
-  border: 1px solid #e4e7ed;
+  background-color: var(--color-bg-white);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-lighter);
 }
 
 .ai-message-content pre {
-  background-color: #f0f0f0;
-  padding: 8px;
-  border-radius: 4px;
+  background-color: #F0F0F0;
+  padding: var(--spacing-sm);
+  border-radius: var(--border-radius-sm);
   overflow-x: auto;
-  margin: 5px 0;
+  margin: var(--spacing-sm) 0;
   text-align: left;
 }
 
 .ai-message-content code {
-  background-color: #f0f0f0;
+  background-color: #F0F0F0;
   padding: 2px 4px;
-  border-radius: 3px;
+  border-radius: var(--border-radius-sm);
   font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
+  font-size: var(--font-size-sm);
 }
 
 .ai-message.user .ai-message-content code {
@@ -496,18 +577,74 @@ span {
 }
 
 .ai-loading {
-  color: #909399;
+  color: var(--color-text-secondary);
   font-style: italic;
 }
 
 .ai-input-area {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--spacing-md);
 }
 
 .ai-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
+  gap: var(--spacing-md);
+}
+
+/* ==================== 编辑器语法高亮 ==================== */
+.ace-jsoneditor .ace_constant.ace_language {
+  color: #0087FF;
+}
+
+/* ==================== 响应式优化 ==================== */
+@media (max-width: 1200px) {
+  .leftSection {
+    width: 45%;
+  }
+
+  #funcsBar {
+    margin-left: 10px !important;
+    margin-right: 10px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .leftSection {
+    width: 100%;
+  }
+
+  .rightSection {
+    display: none;
+  }
+}
+
+/* ==================== Tooltip 预览框样式 ==================== */
+.timestampTooltip,
+.imagePreviewTooltip {
+  display: none;
+  position: fixed;
+  z-index: 10000;
+  background: var(--color-bg-white);
+  border: 1px solid var(--color-border-base);
+  border-radius: var(--border-radius-base);
+  padding: var(--spacing-md) var(--spacing-lg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  font-size: var(--font-size-base);
+}
+
+.timestampTooltip .timestamp-value {
+  color: #409EFF;
+  font-weight: bold;
+}
+
+.imagePreviewTooltip .preview-loading {
+  color: var(--color-text-secondary);
+  padding: var(--spacing-md);
+}
+
+.imagePreviewTooltip img {
+  display: none;
+  border-radius: var(--border-radius-base);
 }

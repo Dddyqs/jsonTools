@@ -39,37 +39,30 @@
 
 <body>
   <el-container id="app" class="app">
-    <el-header id="funcsBar" class="funcsBar" style="display: flex; flex-direction: column; padding: 10px; height: auto;">
-      <!-- 第一行：查询相关 -->
-      <div style="display: flex; justify-content: flex-start; align-items: center; gap: 6px; width: 100%; overflow: hidden;">
-        <!-- 左侧固定区 -->
-        <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+    <el-header id="funcsBar" class="funcsBar">
+      <div class="funcsBarRow">
+        <div class="funcsBarItem">
           <el-badge :value="jsonDiffCount" :max="999" class="item">
             <el-button plain type="success" size="mini" @click="jsonDiff">json对比</el-button>
           </el-badge>
-          <!-- 有差异时显示导航按钮 -->
           <template v-if="jsonDiffCount > 0">
-            <el-button plain type="success" size="mini" icon="el-icon-arrow-up" title="上一个差异" @click="switchDiff('up')" style="padding: 3px 5px;"></el-button>
-            <el-button plain type="success" size="mini" icon="el-icon-arrow-down" title="下一个差异" @click="switchDiff('down')" style="padding: 3px 5px;"></el-button>
+            <el-button plain type="success" size="mini" icon="el-icon-arrow-up" title="上一个差异" @click="switchDiff('up')"></el-button>
+            <el-button plain type="success" size="mini" icon="el-icon-arrow-down" title="下一个差异" @click="switchDiff('down')"></el-button>
           </template>
-          <span :style="{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '22px', height: '22px', padding: '0 4px', color: '#67C23A', fontSize: '12px', fontWeight: 'bold' }">{{ jsonEditorActive }}</span>
+          <span class="editorMenuLabel editorMenuLabel--primary">{{ jsonEditorActive }}</span>
         </div>
-        <!-- 中间输入框：弹性填充 -->
         <el-autocomplete id="jsonQuery" class="jsonQuery" v-model="jsonQueryStr" :fetch-suggestions="querySearch"
-          size="mini"
-          placeholder="" @change="handleQuerySubmit('output')"
-          :style="{ marginLeft: '2px', flex: '1', minWidth: '150px' }">
-          <el-button slot="append" size="mini" :disabled="isAiGenerating" @click="handleQuerySubmit('output')"
-            :style="{ minWidth: '72px', backgroundColor: '#67C23A', color: '#fff', borderColor: '#67C23A' }">{{ isAiGenerating ? '处理中...' : '执行' }}</el-button>
+          size="mini" placeholder="" @change="handleQuerySubmit('output')"
+          style="margin-left: 2px; flex: 1; min-width: 150px;">
+          <el-button slot="append" size="mini" class="queryExecuteBtn" :disabled="isAiGenerating" @click="handleQuerySubmit('output')">{{ isAiGenerating ? '处理中...' : '执行' }}</el-button>
           <template slot-scope="{ item }">
-            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-              <span style="flex: 1;">{{ item.value }}</span>
-              <el-button v-if="item.value !== ''" type="text" size="mini" icon="el-icon-close" @click.stop="removeHistoryItem(item.value)" style="padding: 0; margin-left: 10px; color: #909399;"></el-button>
+            <div class="queryItem">
+              <span class="queryItemText">{{ item.value }}</span>
+              <el-button v-if="item.value !== ''" type="text" size="mini" icon="el-icon-close" class="queryItemDelete" @click.stop="removeHistoryItem(item.value)"></el-button>
             </div>
           </template>
           <div slot="suffix" style="display: none;"></div>
         </el-autocomplete>
-        <!-- 右侧：设置按钮（固定最右） -->
         <el-dropdown :hide-on-click="false" trigger="click" style="flex-shrink: 0; margin-left: auto;">
           <el-button plain type="success" size="mini" icon="el-icon-setting"></el-button>
           <el-dropdown-menu slot="dropdown">
@@ -90,58 +83,53 @@
       <div id="leftSection" class="leftSection">
         <div id="jsonEditorLeftBox" ref="jsonEditorLeftBox" class="jsonEditorLeftBox">
           <div id="jsonMenu" class="editorMenu">
-            <div class="editorMenuBtn" style="display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 4px; color: #e9f0e2; font-size: 11px; font-weight: bold;">左</div>
-
-            <el-button type="primary" size="mini" :class="['editorMenuBtn setModeCodeBtn', jsonEditorLeftMode === 'code' ? 'modeActive' : '']"
-              @click="setModeCode" style="margin-right: 0;">code</el-button>
-            <el-button type="primary" size="mini" :class="['editorMenuBtn setModeTreeBtn', jsonEditorLeftMode === 'tree' ? 'modeActive' : '']" @click="setModeTree"
-              style="margin-left: 0;">tree</el-button>
-            <el-button v-if="jsonEditorLeftMode === 'code'" type="primary" size="mini"
-              class="editorMenuBtn jsonFormatBtn" @click="jsonFormat">格式化</el-button>
-            <el-button v-if="jsonEditorLeftMode === 'code'" type="primary" size="mini"
-              class="editorMenuBtn jsonCompactBtn" @click="jsonCompact">压缩</el-button>
-            <div v-if="jsonEditorLeftMode === 'code'"> |</div>
+            <div class="editorMenuLabel">左</div>
+            <el-button type="primary" size="mini" :class="['editorMenuBtn setModeCodeBtn', jsonEditorLeftMode === 'code' ? 'modeActive' : '']" @click="setModeCode">code</el-button>
+            <el-button type="primary" size="mini" :class="['editorMenuBtn setModeTreeBtn', jsonEditorLeftMode === 'tree' ? 'modeActive' : '']" @click="setModeTree">tree</el-button>
+            <template v-if="jsonEditorLeftMode === 'code'">
+              <el-button type="primary" size="mini" class="editorMenuBtn jsonFormatBtn" @click="jsonFormat">格式化</el-button>
+              <el-button type="primary" size="mini" class="editorMenuBtn jsonCompactBtn" @click="jsonCompact">压缩</el-button>
+              <span class="editorMenuSep">|</span>
+            </template>
             <el-button type="primary" size="mini" class="editorMenuBtn" @click="toJsonAndCopy">转义</el-button>
             <el-button type="primary" size="mini" class="editorMenuBtn" @click="toObjectAndCopy">反转义</el-button>
-            <div> |</div>
+            <span class="editorMenuSep">|</span>
             <el-button type="primary" size="mini" class="editorMenuBtn foldAllBtn" @click="foldAll">收缩</el-button>
             <el-button type="primary" size="mini" class="editorMenuBtn unfoldBtn" @click="unfold">展开</el-button>
-            <div> |</div>
-            <el-button type="primary" size="mini" class="editorMenuBtn transJsonBtn"
-              @click="__openTransSortJsonBox">筛选</el-button>
-            <div> |</div>
-            <el-button v-if="jsonEditorLeftMode==='code'" type="primary" size="mini"
-              class="editorMenuBtn sortJsonByKeyBtn" @click="__openTransSortJsonBox">排序</el-button>
-            <el-button v-if="jsonEditorLeftMode==='code'" type="primary" size="mini" class="editorMenuBtn" @click="toggleSortJsonByFieldKey" :title="sortFieldKeyDirection === 'asc' ? '按键升序排序' : '按键降序排序'">
-              按键排序<i :class="sortFieldKeyDirection === 'asc' ? 'el-icon-arrow-up' : 'el-icon-arrow-down'"></i>
-            </el-button>
+            <span class="editorMenuSep">|</span>
+            <el-button type="primary" size="mini" class="editorMenuBtn transJsonBtn" @click="__openTransSortJsonBox">筛选</el-button>
+            <span class="editorMenuSep">|</span>
+            <template v-if="jsonEditorLeftMode === 'code'">
+              <el-button type="primary" size="mini" class="editorMenuBtn sortJsonByKeyBtn" @click="__openTransSortJsonBox">排序</el-button>
+              <el-button type="primary" size="mini" class="editorMenuBtn" @click="toggleSortJsonByFieldKey" :title="sortFieldKeyDirection === 'asc' ? '按键升序排序' : '按键降序排序'">
+                按键排序<i :class="sortFieldKeyDirection === 'asc' ? 'el-icon-arrow-up' : 'el-icon-arrow-down'"></i>
+              </el-button>
+            </template>
             <el-input v-if="jsonEditorLeftMode === 'tree'" placeholder="搜索" size="mini"
               v-model="jsonLeftTreeSearchStr" @change="treeSearch('jsonEditorLeft')"
               @keyup.enter.native="treeSearch('jsonEditorLeft')"
               class="tree-search-input">
             </el-input>
-            <span @click="isBoxHidden.leftSection = true; hiddenBox()" style="margin-left: auto; cursor: pointer; padding: 2px 4px;">
-              <i class="el-icon-close" style="font-size: 14px; color: #e9f0e2;"></i>
+            <span @click="isBoxHidden.leftSection = true; hiddenBox()" class="editorMenuClose">
+              <i class="el-icon-close"></i>
             </span>
           </div>
           <div id="jsonEditorLeft" ref="jsonEditorLeft" class="jsonEditorLeft"></div>
         </div>
         <div id="transSortBox">
           <div id="transSortHeader" class="editorMenu">
-            <div v-if="transOrSort==='trans'" style="display: flex; align-items: center; gap: 5px;">
-              <span :style="{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '22px', height: '22px', padding: '0 4px', color: '#e9f0e2', fontSize: '11px', fontWeight: 'bold' }">{{ transJsonEditorName === 'JSON左' ? '左' : '右' }}</span>
+            <div v-if="transOrSort === 'trans'" class="editorMenuItem">
+              <span class="editorMenuLabel">{{ transJsonEditorName === 'JSON左' ? '左' : '右' }}</span>
               <span>筛选</span>
             </div>
-            <div v-if="transOrSort==='sort'" style="display: flex; align-items: center; gap: 5px;">
-              <span :style="{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '22px', height: '22px', padding: '0 4px', color: '#e9f0e2', fontSize: '11px', fontWeight: 'bold' }">{{ transJsonEditorName === 'JSON左' ? '左' : '右' }}</span>
+            <div v-if="transOrSort === 'sort'" class="editorMenuItem">
+              <span class="editorMenuLabel">{{ transJsonEditorName === 'JSON左' ? '左' : '右' }}</span>
               <span>排序</span>
             </div>
-            <span class="editorMenuBtn" @click="__closeBox('transSortBox')" style="position: absolute; right: 0; margin-right: 5px; cursor: pointer; padding: 2px 4px;">
-              <i class="el-icon-close" style="font-size: 14px; color: #e9f0e2;"></i>
+            <span class="editorMenuBtn editorMenuClose" @click="__closeBox('transSortBox')">
+              <i class="el-icon-close"></i>
             </span>
-            <el-button v-if="transOrSort==='trans'" class="editorMenuBtn"
-              style="position: absolute; right: 20px; margin-right: 5px;" icon="el-icon-refresh"
-              @click="cleanTransJsonConditions">清空</el-button>
+            <el-button v-if="transOrSort === 'trans'" class="editorMenuBtn" style="position: absolute; right: 20px; margin-right: 5px;" icon="el-icon-refresh" @click="cleanTransJsonConditions">清空</el-button>
           </div>
           <div id="transSortMain">
             <el-form v-if="transOrSort==='trans'" ref="transForm" label-width="100px" label-position="left">
@@ -239,38 +227,35 @@
       <div id="rightSection" class="rightSection">
         <div id="jsonEditorRightBox" ref="jsonEditorRightBox" class="jsonEditorRightBox">
           <div id="jsonRightMenu" class="editorMenu">
-            <div class="editorMenuBtn" style="display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 4px; color: #e9f0e2; font-size: 11px; font-weight: bold;">右</div>
-
-            <el-button type="primary" size="mini" :class="['editorMenuBtn setModeCodeBtn', jsonEditorRightMode === 'code' ? 'modeActive' : '']"
-              @click="setModeCode" style="margin-right: 0;">code</el-button>
-            <el-button type="primary" size="mini" :class="['editorMenuBtn setModeTreeBtn', jsonEditorRightMode === 'tree' ? 'modeActive' : '']" @click="setModeTree"
-              style="margin-left: 0;">tree</el-button>
-            <el-button v-if="jsonEditorRightMode === 'code'" type="primary" size="mini"
-              class="editorMenuBtn jsonFormatBtn" @click="jsonFormat">格式化</el-button>
-            <el-button v-if="jsonEditorRightMode === 'code'" type="primary" size="mini"
-              class="editorMenuBtn jsonCompactBtn" @click="jsonCompact">压缩</el-button>
-            <div v-if="jsonEditorRightMode === 'code'"> |</div>
+            <div class="editorMenuLabel">右</div>
+            <el-button type="primary" size="mini" :class="['editorMenuBtn setModeCodeBtn', jsonEditorRightMode === 'code' ? 'modeActive' : '']" @click="setModeCode">code</el-button>
+            <el-button type="primary" size="mini" :class="['editorMenuBtn setModeTreeBtn', jsonEditorRightMode === 'tree' ? 'modeActive' : '']" @click="setModeTree">tree</el-button>
+            <template v-if="jsonEditorRightMode === 'code'">
+              <el-button type="primary" size="mini" class="editorMenuBtn jsonFormatBtn" @click="jsonFormat">格式化</el-button>
+              <el-button type="primary" size="mini" class="editorMenuBtn jsonCompactBtn" @click="jsonCompact">压缩</el-button>
+              <span class="editorMenuSep">|</span>
+            </template>
             <el-button type="primary" size="mini" class="editorMenuBtn" @click="toJsonAndCopy">转义</el-button>
             <el-button type="primary" size="mini" class="editorMenuBtn" @click="toObjectAndCopy">反转义</el-button>
-            <div> |</div>
+            <span class="editorMenuSep">|</span>
             <el-button type="primary" size="mini" class="editorMenuBtn foldAllBtn" @click="foldAll">收缩</el-button>
             <el-button type="primary" size="mini" class="editorMenuBtn unfoldBtn" @click="unfold">展开</el-button>
-            <div> |</div>
-            <el-button type="primary" size="mini" class="editorMenuBtn transJsonBtn"
-              @click="__openTransSortJsonBox">筛选</el-button>
-            <div> |</div>
-            <el-button v-if="jsonEditorRightMode==='code'" type="primary" size="mini"
-              class="editorMenuBtn sortJsonByKeyBtn" @click="__openTransSortJsonBox">排序</el-button>
-            <el-button v-if="jsonEditorRightMode==='code'" type="primary" size="mini" class="editorMenuBtn" @click="toggleSortJsonByFieldKey" :title="sortFieldKeyDirection === 'asc' ? '按键升序排序' : '按键降序排序'">
-              按键排序<i :class="sortFieldKeyDirection === 'asc' ? 'el-icon-arrow-up' : 'el-icon-arrow-down'"></i>
-            </el-button>
+            <span class="editorMenuSep">|</span>
+            <el-button type="primary" size="mini" class="editorMenuBtn transJsonBtn" @click="__openTransSortJsonBox">筛选</el-button>
+            <span class="editorMenuSep">|</span>
+            <template v-if="jsonEditorRightMode === 'code'">
+              <el-button type="primary" size="mini" class="editorMenuBtn sortJsonByKeyBtn" @click="__openTransSortJsonBox">排序</el-button>
+              <el-button type="primary" size="mini" class="editorMenuBtn" @click="toggleSortJsonByFieldKey" :title="sortFieldKeyDirection === 'asc' ? '按键升序排序' : '按键降序排序'">
+                按键排序<i :class="sortFieldKeyDirection === 'asc' ? 'el-icon-arrow-up' : 'el-icon-arrow-down'"></i>
+              </el-button>
+            </template>
             <el-input v-if="jsonEditorRightMode === 'tree'" placeholder="搜索" size="mini"
               v-model="jsonRightTreeSearchStr" @change="treeSearch('jsonEditorRight')"
               @keyup.enter.native="treeSearch('jsonEditorRight')"
               class="tree-search-input">
             </el-input>
-            <span @click="isBoxHidden.jsonEditorRightBox = true; hiddenBox()" style="margin-left: auto; cursor: pointer; padding: 2px 4px;">
-              <i class="el-icon-close" style="font-size: 14px; color: #e9f0e2;"></i>
+            <span @click="isBoxHidden.jsonEditorRightBox = true; hiddenBox()" class="editorMenuClose">
+              <i class="el-icon-close"></i>
             </span>
           </div>
           <div id="jsonEditorRight" ref="jsonEditorRight" class="jsonEditorRight"></div>
@@ -279,7 +264,7 @@
         <div class="drag-horizontal"></div>
         <div id="aceEditorBox" ref="aceEditorBox" class="aceEditorBox">
           <div id="aceEditorMenu" class="editorMenu">
-            <span style="display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 3px; color: #e9f0e2; font-size: 10px; margin-right: 5px; font-weight: bold;"><i class="el-icon-document" style="font-size: 10px;"></i></span>
+            <span class="editorMenuIcon"><i class="el-icon-document"></i></span>
             <el-dropdown :hide-on-click="false" trigger="click">
               <el-button type="primary" size="mini" class="editorMenuBtn">
                 {{ (aceModes.find(m => m.value === aceLanguage) || {}).label || '语言' }}<i class="el-icon-arrow-down el-icon--right"></i>
@@ -290,15 +275,14 @@
                 </el-dropdown-item>
               </el-dropdown-menu>
             </el-dropdown>
-            <el-button id="beautifyBtn" type="primary" size="mini" class="editorMenuBtn"
-              @click="beautifyContent">美化</el-button>
-            <div v-if="aceLanguage === 'ace/mode/text'"> |</div>
-            <el-button v-if="aceLanguage === 'ace/mode/text'" id="base64DecodeBtn" type="primary" size="mini" class="editorMenuBtn"
-              @click="base64Decode">Base64解码</el-button>
-            <el-button v-if="aceLanguage === 'ace/mode/text'" id="urlDecodeBtn" type="primary" size="mini" class="editorMenuBtn"
-              @click="urlDecode">URL解码</el-button>
-            <span @click="isBoxHidden.aceEditorBox = true; hiddenBox()" style="margin-left: auto; cursor: pointer; padding: 2px 4px;">
-              <i class="el-icon-close" style="font-size: 14px; color: #e9f0e2;"></i>
+            <el-button id="beautifyBtn" type="primary" size="mini" class="editorMenuBtn" @click="beautifyContent">美化</el-button>
+            <template v-if="aceLanguage === 'ace/mode/text'">
+              <span class="editorMenuSep">|</span>
+              <el-button id="base64DecodeBtn" type="primary" size="mini" class="editorMenuBtn" @click="base64Decode">Base64解码</el-button>
+              <el-button id="urlDecodeBtn" type="primary" size="mini" class="editorMenuBtn" @click="urlDecode">URL解码</el-button>
+            </template>
+            <span @click="isBoxHidden.aceEditorBox = true; hiddenBox()" class="editorMenuClose">
+              <i class="el-icon-close"></i>
             </span>
           </div>
           <div id="aceEditor" class="aceEditor"></div>
