@@ -39,28 +39,37 @@
 
 <body>
   <el-container id="app" class="app">
-    <el-header id="funcsBar" class="funcsBar">
-      <div class="funcsBarRow">
-        <div class="funcsBarItem">
+    <el-header id="funcsBar" class="funcsBar" style="display: flex; flex-direction: column; padding: 10px; height: auto;">
+      <!-- 第一行：查询相关 -->
+      <div style="display: flex; justify-content: flex-start; align-items: center; gap: 6px; width: 100%; overflow: hidden;">
+        <!-- 左侧固定区 -->
+        <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
           <el-badge :value="jsonDiffCount" :max="999" class="item">
             <el-button plain type="success" size="mini" @click="jsonDiff">json对比</el-button>
           </el-badge>
+          <!-- 有差异时显示导航按钮 -->
           <template v-if="jsonDiffCount > 0">
-            <el-button plain type="success" size="mini" icon="el-icon-arrow-up" title="上一个差异" @click="switchDiff('up')"></el-button>
-            <el-button plain type="success" size="mini" icon="el-icon-arrow-down" title="下一个差异" @click="switchDiff('down')"></el-button>
+            <el-button plain type="success" size="mini" icon="el-icon-arrow-up" title="上一个差异" @click="switchDiff('up')" style="padding: 3px 5px;"></el-button>
+            <el-button plain type="success" size="mini" icon="el-icon-arrow-down" title="下一个差异" @click="switchDiff('down')" style="padding: 3px 5px;"></el-button>
           </template>
-          <span class="editorMenuLabel editorMenuLabel--primary">{{ jsonEditorActive }}</span>
+          <span :style="{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '22px', height: '22px', padding: '0 4px', color: '#67C23A', fontSize: '12px', fontWeight: 'bold' }">{{ jsonEditorActive }}</span>
         </div>
-        <el-autocomplete class="jsonQuery" v-model="jsonQueryStr" :fetch-suggestions="querySearch"
-          size="mini" placeholder="" @change="handleQuerySubmit('output')" style="margin-left: 2px; flex: 1; min-width: 150px;">
+        <!-- 中间输入框：弹性填充 -->
+        <el-autocomplete id="jsonQuery" class="jsonQuery" v-model="jsonQueryStr" :fetch-suggestions="querySearch"
+          size="mini"
+          placeholder="" @change="handleQuerySubmit('output')"
+          :style="{ marginLeft: '2px', flex: '1', minWidth: '150px' }">
+          <el-button slot="append" size="mini" :disabled="isAiGenerating" @click="handleQuerySubmit('output')"
+            :style="{ minWidth: '72px', backgroundColor: '#67C23A', color: '#fff', borderColor: '#67C23A' }">{{ isAiGenerating ? '处理中...' : '执行' }}</el-button>
           <template slot-scope="{ item }">
-            <div class="queryItem">
-              <span class="queryItemText">{{ item.value }}</span>
-              <el-button v-if="item.value !== ''" type="text" size="mini" icon="el-icon-close" class="queryItemDelete" @click.stop="removeHistoryItem(item.value)"></el-button>
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+              <span style="flex: 1;">{{ item.value }}</span>
+              <el-button v-if="item.value !== ''" type="text" size="mini" icon="el-icon-close" @click.stop="removeHistoryItem(item.value)" style="padding: 0; margin-left: 10px; color: #909399;"></el-button>
             </div>
           </template>
-          <el-button slot="append" :disabled="isAiGenerating" @click="handleQuerySubmit('output')">{{ isAiGenerating ? '处理中...' : '执行' }}</el-button>
+          <div slot="suffix" style="display: none;"></div>
         </el-autocomplete>
+        <!-- 右侧：设置按钮（固定最右） -->
         <el-dropdown :hide-on-click="false" trigger="click" style="flex-shrink: 0; margin-left: auto;">
           <el-button plain type="success" size="mini" icon="el-icon-setting"></el-button>
           <el-dropdown-menu slot="dropdown">
@@ -81,53 +90,58 @@
       <div id="leftSection" class="leftSection">
         <div id="jsonEditorLeftBox" ref="jsonEditorLeftBox" class="jsonEditorLeftBox">
           <div id="jsonMenu" class="editorMenu">
-            <div class="editorMenuLabel">左</div>
-            <el-button type="primary" size="mini" :class="['editorMenuBtn setModeCodeBtn', jsonEditorLeftMode === 'code' ? 'modeActive' : '']" @click="setModeCode">code</el-button>
-            <el-button type="primary" size="mini" :class="['editorMenuBtn setModeTreeBtn', jsonEditorLeftMode === 'tree' ? 'modeActive' : '']" @click="setModeTree">tree</el-button>
-            <template v-if="jsonEditorLeftMode === 'code'">
-              <el-button type="primary" size="mini" class="editorMenuBtn jsonFormatBtn" @click="jsonFormat">格式化</el-button>
-              <el-button type="primary" size="mini" class="editorMenuBtn jsonCompactBtn" @click="jsonCompact">压缩</el-button>
-              <span class="editorMenuSep">|</span>
-            </template>
+            <div class="editorMenuBtn" style="display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 4px; color: #e9f0e2; font-size: 11px; font-weight: bold;">左</div>
+
+            <el-button type="primary" size="mini" :class="['editorMenuBtn setModeCodeBtn', jsonEditorLeftMode === 'code' ? 'modeActive' : '']"
+              @click="setModeCode" style="margin-right: 0;">code</el-button>
+            <el-button type="primary" size="mini" :class="['editorMenuBtn setModeTreeBtn', jsonEditorLeftMode === 'tree' ? 'modeActive' : '']" @click="setModeTree"
+              style="margin-left: 0;">tree</el-button>
+            <el-button v-if="jsonEditorLeftMode === 'code'" type="primary" size="mini"
+              class="editorMenuBtn jsonFormatBtn" @click="jsonFormat">格式化</el-button>
+            <el-button v-if="jsonEditorLeftMode === 'code'" type="primary" size="mini"
+              class="editorMenuBtn jsonCompactBtn" @click="jsonCompact">压缩</el-button>
+            <div v-if="jsonEditorLeftMode === 'code'"> |</div>
             <el-button type="primary" size="mini" class="editorMenuBtn" @click="toJsonAndCopy">转义</el-button>
             <el-button type="primary" size="mini" class="editorMenuBtn" @click="toObjectAndCopy">反转义</el-button>
-            <span class="editorMenuSep">|</span>
+            <div> |</div>
             <el-button type="primary" size="mini" class="editorMenuBtn foldAllBtn" @click="foldAll">收缩</el-button>
             <el-button type="primary" size="mini" class="editorMenuBtn unfoldBtn" @click="unfold">展开</el-button>
-            <span class="editorMenuSep">|</span>
-            <el-button type="primary" size="mini" class="editorMenuBtn transJsonBtn" @click="__openTransSortJsonBox">筛选</el-button>
-            <span class="editorMenuSep">|</span>
-            <template v-if="jsonEditorLeftMode === 'code'">
-              <el-button type="primary" size="mini" class="editorMenuBtn sortJsonByKeyBtn" @click="__openTransSortJsonBox">排序</el-button>
-              <el-button type="primary" size="mini" class="editorMenuBtn" @click="toggleSortJsonByFieldKey" :title="sortFieldKeyDirection === 'asc' ? '按键升序排序' : '按键降序排序'">
-                按键排序<i :class="sortFieldKeyDirection === 'asc' ? 'el-icon-arrow-up' : 'el-icon-arrow-down'"></i>
-              </el-button>
-            </template>
+            <div> |</div>
+            <el-button type="primary" size="mini" class="editorMenuBtn transJsonBtn"
+              @click="__openTransSortJsonBox">筛选</el-button>
+            <div> |</div>
+            <el-button v-if="jsonEditorLeftMode==='code'" type="primary" size="mini"
+              class="editorMenuBtn sortJsonByKeyBtn" @click="__openTransSortJsonBox">排序</el-button>
+            <el-button v-if="jsonEditorLeftMode==='code'" type="primary" size="mini" class="editorMenuBtn" @click="toggleSortJsonByFieldKey" :title="sortFieldKeyDirection === 'asc' ? '按键升序排序' : '按键降序排序'">
+              按键排序<i :class="sortFieldKeyDirection === 'asc' ? 'el-icon-arrow-up' : 'el-icon-arrow-down'"></i>
+            </el-button>
             <el-input v-if="jsonEditorLeftMode === 'tree'" placeholder="搜索" size="mini"
               v-model="jsonLeftTreeSearchStr" @change="treeSearch('jsonEditorLeft')"
               @keyup.enter.native="treeSearch('jsonEditorLeft')"
               class="tree-search-input">
             </el-input>
-            <span @click="isBoxHidden.leftSection = true; hiddenBox()" class="editorMenuClose">
-              <i class="el-icon-close"></i>
+            <span @click="isBoxHidden.leftSection = true; hiddenBox()" style="margin-left: auto; cursor: pointer; padding: 2px 4px;">
+              <i class="el-icon-close" style="font-size: 14px; color: #e9f0e2;"></i>
             </span>
           </div>
           <div id="jsonEditorLeft" ref="jsonEditorLeft" class="jsonEditorLeft"></div>
         </div>
         <div id="transSortBox">
           <div id="transSortHeader" class="editorMenu">
-            <div v-if="transOrSort === 'trans'" class="editorMenuItem">
-              <span class="editorMenuLabel">{{ transJsonEditorName === 'JSON左' ? '左' : '右' }}</span>
+            <div v-if="transOrSort==='trans'" style="display: flex; align-items: center; gap: 5px;">
+              <span :style="{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '22px', height: '22px', padding: '0 4px', color: '#e9f0e2', fontSize: '11px', fontWeight: 'bold' }">{{ transJsonEditorName === 'JSON左' ? '左' : '右' }}</span>
               <span>筛选</span>
             </div>
-            <div v-if="transOrSort === 'sort'" class="editorMenuItem">
-              <span class="editorMenuLabel">{{ transJsonEditorName === 'JSON左' ? '左' : '右' }}</span>
+            <div v-if="transOrSort==='sort'" style="display: flex; align-items: center; gap: 5px;">
+              <span :style="{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '22px', height: '22px', padding: '0 4px', color: '#e9f0e2', fontSize: '11px', fontWeight: 'bold' }">{{ transJsonEditorName === 'JSON左' ? '左' : '右' }}</span>
               <span>排序</span>
             </div>
-            <span class="editorMenuBtn editorMenuClose" @click="__closeBox('transSortBox')">
-              <i class="el-icon-close"></i>
+            <span class="editorMenuBtn" @click="__closeBox('transSortBox')" style="position: absolute; right: 0; margin-right: 5px; cursor: pointer; padding: 2px 4px;">
+              <i class="el-icon-close" style="font-size: 14px; color: #e9f0e2;"></i>
             </span>
-            <el-button v-if="transOrSort === 'trans'" class="editorMenuBtn" style="position: absolute; right: 20px; margin-right: 5px;" icon="el-icon-refresh" @click="cleanTransJsonConditions">清空</el-button>
+            <el-button v-if="transOrSort==='trans'" class="editorMenuBtn"
+              style="position: absolute; right: 20px; margin-right: 5px;" icon="el-icon-refresh"
+              @click="cleanTransJsonConditions">清空</el-button>
           </div>
           <div id="transSortMain">
             <el-form v-if="transOrSort==='trans'" ref="transForm" label-width="100px" label-position="left">
@@ -225,35 +239,38 @@
       <div id="rightSection" class="rightSection">
         <div id="jsonEditorRightBox" ref="jsonEditorRightBox" class="jsonEditorRightBox">
           <div id="jsonRightMenu" class="editorMenu">
-            <div class="editorMenuLabel">右</div>
-            <el-button type="primary" size="mini" :class="['editorMenuBtn setModeCodeBtn', jsonEditorRightMode === 'code' ? 'modeActive' : '']" @click="setModeCode">code</el-button>
-            <el-button type="primary" size="mini" :class="['editorMenuBtn setModeTreeBtn', jsonEditorRightMode === 'tree' ? 'modeActive' : '']" @click="setModeTree">tree</el-button>
-            <template v-if="jsonEditorRightMode === 'code'">
-              <el-button type="primary" size="mini" class="editorMenuBtn jsonFormatBtn" @click="jsonFormat">格式化</el-button>
-              <el-button type="primary" size="mini" class="editorMenuBtn jsonCompactBtn" @click="jsonCompact">压缩</el-button>
-              <span class="editorMenuSep">|</span>
-            </template>
+            <div class="editorMenuBtn" style="display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 4px; color: #e9f0e2; font-size: 11px; font-weight: bold;">右</div>
+
+            <el-button type="primary" size="mini" :class="['editorMenuBtn setModeCodeBtn', jsonEditorRightMode === 'code' ? 'modeActive' : '']"
+              @click="setModeCode" style="margin-right: 0;">code</el-button>
+            <el-button type="primary" size="mini" :class="['editorMenuBtn setModeTreeBtn', jsonEditorRightMode === 'tree' ? 'modeActive' : '']" @click="setModeTree"
+              style="margin-left: 0;">tree</el-button>
+            <el-button v-if="jsonEditorRightMode === 'code'" type="primary" size="mini"
+              class="editorMenuBtn jsonFormatBtn" @click="jsonFormat">格式化</el-button>
+            <el-button v-if="jsonEditorRightMode === 'code'" type="primary" size="mini"
+              class="editorMenuBtn jsonCompactBtn" @click="jsonCompact">压缩</el-button>
+            <div v-if="jsonEditorRightMode === 'code'"> |</div>
             <el-button type="primary" size="mini" class="editorMenuBtn" @click="toJsonAndCopy">转义</el-button>
             <el-button type="primary" size="mini" class="editorMenuBtn" @click="toObjectAndCopy">反转义</el-button>
-            <span class="editorMenuSep">|</span>
+            <div> |</div>
             <el-button type="primary" size="mini" class="editorMenuBtn foldAllBtn" @click="foldAll">收缩</el-button>
             <el-button type="primary" size="mini" class="editorMenuBtn unfoldBtn" @click="unfold">展开</el-button>
-            <span class="editorMenuSep">|</span>
-            <el-button type="primary" size="mini" class="editorMenuBtn transJsonBtn" @click="__openTransSortJsonBox">筛选</el-button>
-            <span class="editorMenuSep">|</span>
-            <template v-if="jsonEditorRightMode === 'code'">
-              <el-button type="primary" size="mini" class="editorMenuBtn sortJsonByKeyBtn" @click="__openTransSortJsonBox">排序</el-button>
-              <el-button type="primary" size="mini" class="editorMenuBtn" @click="toggleSortJsonByFieldKey" :title="sortFieldKeyDirection === 'asc' ? '按键升序排序' : '按键降序排序'">
-                按键排序<i :class="sortFieldKeyDirection === 'asc' ? 'el-icon-arrow-up' : 'el-icon-arrow-down'"></i>
-              </el-button>
-            </template>
+            <div> |</div>
+            <el-button type="primary" size="mini" class="editorMenuBtn transJsonBtn"
+              @click="__openTransSortJsonBox">筛选</el-button>
+            <div> |</div>
+            <el-button v-if="jsonEditorRightMode==='code'" type="primary" size="mini"
+              class="editorMenuBtn sortJsonByKeyBtn" @click="__openTransSortJsonBox">排序</el-button>
+            <el-button v-if="jsonEditorRightMode==='code'" type="primary" size="mini" class="editorMenuBtn" @click="toggleSortJsonByFieldKey" :title="sortFieldKeyDirection === 'asc' ? '按键升序排序' : '按键降序排序'">
+              按键排序<i :class="sortFieldKeyDirection === 'asc' ? 'el-icon-arrow-up' : 'el-icon-arrow-down'"></i>
+            </el-button>
             <el-input v-if="jsonEditorRightMode === 'tree'" placeholder="搜索" size="mini"
               v-model="jsonRightTreeSearchStr" @change="treeSearch('jsonEditorRight')"
               @keyup.enter.native="treeSearch('jsonEditorRight')"
               class="tree-search-input">
             </el-input>
-            <span @click="isBoxHidden.jsonEditorRightBox = true; hiddenBox()" class="editorMenuClose">
-              <i class="el-icon-close"></i>
+            <span @click="isBoxHidden.jsonEditorRightBox = true; hiddenBox()" style="margin-left: auto; cursor: pointer; padding: 2px 4px;">
+              <i class="el-icon-close" style="font-size: 14px; color: #e9f0e2;"></i>
             </span>
           </div>
           <div id="jsonEditorRight" ref="jsonEditorRight" class="jsonEditorRight"></div>
@@ -262,7 +279,7 @@
         <div class="drag-horizontal"></div>
         <div id="aceEditorBox" ref="aceEditorBox" class="aceEditorBox">
           <div id="aceEditorMenu" class="editorMenu">
-            <span class="editorMenuIcon"><i class="el-icon-document"></i></span>
+            <span style="display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 3px; color: #e9f0e2; font-size: 10px; margin-right: 5px; font-weight: bold;"><i class="el-icon-document" style="font-size: 10px;"></i></span>
             <el-dropdown :hide-on-click="false" trigger="click">
               <el-button type="primary" size="mini" class="editorMenuBtn">
                 {{ (aceModes.find(m => m.value === aceLanguage) || {}).label || '语言' }}<i class="el-icon-arrow-down el-icon--right"></i>
@@ -273,14 +290,15 @@
                 </el-dropdown-item>
               </el-dropdown-menu>
             </el-dropdown>
-            <el-button id="beautifyBtn" type="primary" size="mini" class="editorMenuBtn" @click="beautifyContent">美化</el-button>
-            <template v-if="aceLanguage === 'ace/mode/text'">
-              <span class="editorMenuSep">|</span>
-              <el-button id="base64DecodeBtn" type="primary" size="mini" class="editorMenuBtn" @click="base64Decode">Base64解码</el-button>
-              <el-button id="urlDecodeBtn" type="primary" size="mini" class="editorMenuBtn" @click="urlDecode">URL解码</el-button>
-            </template>
-            <span @click="isBoxHidden.aceEditorBox = true; hiddenBox()" class="editorMenuClose">
-              <i class="el-icon-close"></i>
+            <el-button id="beautifyBtn" type="primary" size="mini" class="editorMenuBtn"
+              @click="beautifyContent">美化</el-button>
+            <div v-if="aceLanguage === 'ace/mode/text'"> |</div>
+            <el-button v-if="aceLanguage === 'ace/mode/text'" id="base64DecodeBtn" type="primary" size="mini" class="editorMenuBtn"
+              @click="base64Decode">Base64解码</el-button>
+            <el-button v-if="aceLanguage === 'ace/mode/text'" id="urlDecodeBtn" type="primary" size="mini" class="editorMenuBtn"
+              @click="urlDecode">URL解码</el-button>
+            <span @click="isBoxHidden.aceEditorBox = true; hiddenBox()" style="margin-left: auto; cursor: pointer; padding: 2px 4px;">
+              <i class="el-icon-close" style="font-size: 14px; color: #e9f0e2;"></i>
             </span>
           </div>
           <div id="aceEditor" class="aceEditor"></div>
@@ -506,7 +524,7 @@
         const str = queryStr.trim();
         if (!str) return 'jsonpath';
 
-        if (_RE.jsonpath.test(str) || str.startsWith('$')) {
+        if (str.startsWith('$')) {
           return 'jsonpath';
         }
 
@@ -537,7 +555,7 @@
 
 可选类型：
 - jsonpath：以$开头，如 $.data.items、$..name、$[0]
-- jmespath：以@开头或包含jmespath函数，如 @.items、[?age>\\\`18\\\`]
+- jmespath：以@开头或包含jmespath函数，如 @.items、[?age>\`18\`]
 - natural：自然语言描述，不是查询语法，如"提取所有name"、"随机保留2个"
 
 只输出类型名称，不要任何解释。`
@@ -769,7 +787,7 @@
             path = getJsonpathByLine(this.jsonEditorRight, lineNum);
           }
           if (path) {
-            let queryValue = path;
+            const queryValue = path;
             this.setJsonQueryStr(queryValue, true);
           }
         });
@@ -1456,29 +1474,23 @@
         }
       },
 
-      // 根据 jsonpath、jmespath 获取数据
+      //根据jsonpath、jmespath获取数据
       async getJsonByQuery(op) {
-        // 防重入：上一次查询未完成时忽略新的请求
         if (this.isQueryExecuting) return;
         this.opName = "getJsonByQuery";
-        // 设置查询执行标志，防止onTextSelectionChange修改jsonEditorActive
         this.isQueryExecuting = true;
-        // 保存当前的编辑器激活状态和面板状态，防止输出后被修改
         const savedEditorActive = this.jsonEditorActive;
         const savedTransJsonEditorName = this.transJsonEditorName;
         this.isBoxHidden.leftSection = false;
         this.isBoxHidden.jsonEditorRightBox = false;
         this.jsonEditorRight.setMode("code");
-        // 只有非自动生成的用户输入才记录历史
         if (!this.isAutoFilledQuery && !this.jsonQueryStrHistorys.includes(this.jsonQueryStr)) {
           this.jsonQueryStrHistorys.push(this.jsonQueryStr);
           this.jsonQueryStrList.unshift({ "value": this.jsonQueryStr });
         }
         this.isAutoFilledQuery = false;
         try {
-          const isSourceRight = this.jsonEditorActive 
-            ? this.jsonEditorActive === "右" 
-            : this.transJsonEditorName === "JSON右";
+          const isSourceRight = this.jsonEditorActive === "右" || this.transJsonEditorName === "JSON右";
           const activeEditor = isSourceRight ? this.jsonEditorRight : this.jsonEditorLeft;
           const jsonData = LosslessJSON.parse(activeEditor.getText(), myLosslessJSONReviver);
 
@@ -2501,17 +2513,17 @@
           const lineData = diffLineData[lineNum];
           if (!lineData) return;
 
-          const lineELs = groupEl.querySelectorAll(".ace_line");
+          const lineELs = $(groupEl).find(".ace_line");
 
           // 渲染行样式
           if (lineData.classNameScope !== "value") {
-            lineELs.forEach(el => el.classList.add(lineData.diffResClassName));
+            lineELs.addClass(lineData.diffResClassName);
           }
 
           // 渲染 key
-          const keyEls = groupEl.querySelectorAll(".ace_variable");
+          const keyEls = $(groupEl).find(".ace_variable");
           if (keyEls.length > 0 && lineData.keyInnerHtml) {
-            keyEls[0].innerHTML = lineData.keyInnerHtml;
+            $(keyEls[0]).html(lineData.keyInnerHtml);
           }
 
           // 渲染 value
@@ -2525,26 +2537,19 @@
       __renderValueDiff(groupEl, lineData, wrapStart, wrapEnd) {
         // null 值特殊处理
         if (lineData.jsonDataType === "null") {
-          const originalHtml = groupEl.innerHTML;
+          const originalHtml = $(groupEl).html();
           const newHtml = originalHtml.replace(": null", ": ");
-          groupEl.innerHTML = newHtml;
-          if (groupEl.querySelector("#nullValue") === null) {
-            const operatorEl = groupEl.querySelector(".ace_operator");
-            if (operatorEl) {
-              const nullSpan = document.createElement('span');
-              nullSpan.id = "nullValue";
-              nullSpan.className = "replaceDiffLine";
-              nullSpan.textContent = "null";
-              operatorEl.before(nullSpan);
-            }
+          $(groupEl).html(newHtml);
+          if ($(groupEl).find("#nullValue").length === 0) {
+            $(groupEl).find(".ace_operator").before("<span id=\"nullValue\" class=\"replaceDiffLine\">null</span>");
           }
         }
 
-        const valueEls = groupEl.querySelectorAll("div > span:not(.ace_indent-guide):not(.ace_variable):not(.ace_operator)");
+        const valueEls = $(groupEl).find("div > span:not(.ace_indent-guide):not(.ace_variable):not(.ace_operator)");
         if (valueEls.length === 0) return;
 
         const valueTexts = Array.from(valueEls).map((valueEl, index) => {
-          let valueText = valueEl.textContent;
+          let valueText = $(valueEl).text();
           // string 去掉首尾双引号
           if (lineData.jsonDataType === "string") {
             if (index === 0 && valueText.startsWith("\"")) {
@@ -2555,9 +2560,9 @@
             }
           }
 
-          const valueElClass = valueEl.className || '';
+          const valueElClass = $(valueEl).attr("class") || '';
           if (!valueElClass.includes("Diff")) {
-            valueEl.classList.add(lineData.diffResClassName);
+            $(valueEl).addClass(lineData.diffResClassName);
           }
           return valueText;
         });
@@ -2569,20 +2574,20 @@
             const text = newTextList[index];
             if (lineData.jsonDataType === "string") {
               if (index === 0 && index === valueEls.length - 1) {
-                valueEl.innerHTML = `"${text}"`;
+                $(valueEl).html(`"${text}"`);
               } else if (index === 0) {
-                valueEl.innerHTML = `"${text}`;
+                $(valueEl).html(`"${text}`);
               } else if (index === valueEls.length - 1) {
-                valueEl.innerHTML = `${text}"`;
+                $(valueEl).html(`${text}"`);
               } else {
-                valueEl.innerHTML = `${text}`;
+                $(valueEl).html(`${text}`);
               }
             } else {
-              valueEl.innerHTML = `${text}`;
+              $(valueEl).html(`${text}`);
             }
           });
         } else if (lineData.jsonDataType === "string" && lineData.jsonDataType !== lineData.otherSideDataType) {
-          valueEls[0].innerHTML = `${wrapStart}"${wrapEnd}${escapeHtml(lineData.jsonData)}${wrapStart}"${wrapEnd}`;
+          $(valueEls[0]).html(`${wrapStart}"${wrapEnd}${escapeHtml(lineData.jsonData)}${wrapStart}"${wrapEnd}`);
         }
       },
 
@@ -2688,7 +2693,7 @@
           }
 
           // 清除上一次的高亮
-          document.querySelectorAll(".diff-current-highlight").forEach(el => el.classList.remove("diff-current-highlight"));
+          $(".diff-current-highlight").removeClass("diff-current-highlight");
 
           // 确定是左还是右编辑器，滚动并高亮
           let targetEditor, targetContainer;
@@ -2704,15 +2709,15 @@
           targetEditor.aceEditor.scrollToLine(lineNum, true, true, () => {
             // 滚动完成后，给当前行加闪烁高亮
             setTimeout(() => {
-              const container = targetContainer;
-              const lines = container.querySelectorAll(".ace_line");
+              const $container = $(targetContainer);
+              const $lines = $container.find(".ace_line");
               const aceFirstRow = targetEditor.aceEditor.getFirstVisibleRow();
               const targetIndex = lineNum - aceFirstRow;
-              if (lines[targetIndex]) {
-                lines[targetIndex].classList.add("diff-current-highlight");
+              if ($lines[targetIndex]) {
+                $($lines[targetIndex]).addClass("diff-current-highlight");
                 // 2秒后自动移除高亮
                 setTimeout(() => {
-                  lines[targetIndex].classList.remove("diff-current-highlight");
+                  $($lines[targetIndex]).removeClass("diff-current-highlight");
                 }, 2000);
               }
             }, 100);
@@ -2843,6 +2848,19 @@
         handler: function (newVal, oldVal) {
           if (newVal !== oldVal && this.jsonQueryStr) {
             const path = this.jsonQueryStr.trim();
+            if (newVal === "jsonpath" && oldVal === "jmespath") {
+              if (path.startsWith("@")) {
+                this.jsonQueryStr = "$" + path.substring(1);
+              } else if (path.startsWith("[")) {
+                this.jsonQueryStr = "$" + path;
+              }
+            } else if (newVal === "jmespath" && oldVal === "jsonpath") {
+              if (path === "$") {
+                this.jsonQueryStr = "@";
+              } else if (path.startsWith("$")) {
+                this.jsonQueryStr = "@" + path.substring(1);
+              }
+            }
           }
         },
       },
