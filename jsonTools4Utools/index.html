@@ -367,7 +367,7 @@
         jsonQueryMode: "jsonpath",
         jsonDiffCount: undefined,
         jsonDiffPatchList: [],
-        jsonDiffLastIndex: 0,
+        jsonDiffLastIndex: -1,
         jsonEditorLeftDiffData: {},
         jsonEditorLeftDiffLineData: {},
         jsonEditorRightDiffData: {},
@@ -2167,7 +2167,7 @@
         const dmp = new diff_match_patch();
 
         jsonDiffPatchList.forEach(oneDiffPatch => {
-          const diffPath = "$" + oneDiffPatch.path.replaceAll("/", ".");
+          const diffPath = this.__convertJsonPatchPath(oneDiffPatch.path);
           const leftIndex = leftPathToIndex.get(diffPath) ?? -1;
           const rightIndex = rightPathToIndex.get(diffPath) ?? -1;
 
@@ -2207,6 +2207,14 @@
           }
         });
         return valueMap;
+      },
+
+      // 将 jsonpatch 路径转换为 JSONPath 格式（匹配 pathLineDict 的格式）
+      // /items/0/name -> $.items.0.name (去掉方括号，与 buildPathMap 保持一致)
+      __convertJsonPatchPath(path) {
+        if (!path || path === '/') return '$';
+        const parts = path.split('/').filter(Boolean);
+        return '$.' + parts.join('.');
       },
 
       // 深拷贝辅助方法（使用 structuredClone 或展开运算符）
@@ -2513,17 +2521,17 @@
           const lineData = diffLineData[lineNum];
           if (!lineData) return;
 
-          const lineELs = $(groupEl).find(".ace_line");
+          const lineELs = groupEl.querySelectorAll(".ace_line");
 
           // 渲染行样式
           if (lineData.classNameScope !== "value") {
-            lineELs.addClass(lineData.diffResClassName);
+            lineELs.forEach(el => el.classList.add(lineData.diffResClassName));
           }
 
           // 渲染 key
-          const keyEls = $(groupEl).find(".ace_variable");
+          const keyEls = groupEl.querySelectorAll(".ace_variable");
           if (keyEls.length > 0 && lineData.keyInnerHtml) {
-            $(keyEls[0]).html(lineData.keyInnerHtml);
+            keyEls[0].innerHTML = lineData.keyInnerHtml;
           }
 
           // 渲染 value
@@ -2537,19 +2545,26 @@
       __renderValueDiff(groupEl, lineData, wrapStart, wrapEnd) {
         // null 值特殊处理
         if (lineData.jsonDataType === "null") {
-          const originalHtml = $(groupEl).html();
+          const originalHtml = groupEl.innerHTML;
           const newHtml = originalHtml.replace(": null", ": ");
-          $(groupEl).html(newHtml);
-          if ($(groupEl).find("#nullValue").length === 0) {
-            $(groupEl).find(".ace_operator").before("<span id=\"nullValue\" class=\"replaceDiffLine\">null</span>");
+          groupEl.innerHTML = newHtml;
+          if (groupEl.querySelector("#nullValue") === null) {
+            const operatorEl = groupEl.querySelector(".ace_operator");
+            if (operatorEl) {
+              const nullSpan = document.createElement('span');
+              nullSpan.id = "nullValue";
+              nullSpan.className = "replaceDiffLine";
+              nullSpan.textContent = "null";
+              operatorEl.before(nullSpan);
+            }
           }
         }
 
-        const valueEls = $(groupEl).find("div > span:not(.ace_indent-guide):not(.ace_variable):not(.ace_operator)");
+        const valueEls = groupEl.querySelectorAll("div > span:not(.ace_indent-guide):not(.ace_variable):not(.ace_operator)");
         if (valueEls.length === 0) return;
 
         const valueTexts = Array.from(valueEls).map((valueEl, index) => {
-          let valueText = $(valueEl).text();
+          let valueText = valueEl.textContent;
           // string 去掉首尾双引号
           if (lineData.jsonDataType === "string") {
             if (index === 0 && valueText.startsWith("\"")) {
@@ -2560,9 +2575,9 @@
             }
           }
 
-          const valueElClass = $(valueEl).attr("class") || '';
+          const valueElClass = valueEl.className || '';
           if (!valueElClass.includes("Diff")) {
-            $(valueEl).addClass(lineData.diffResClassName);
+            valueEl.classList.add(lineData.diffResClassName);
           }
           return valueText;
         });
@@ -2574,20 +2589,20 @@
             const text = newTextList[index];
             if (lineData.jsonDataType === "string") {
               if (index === 0 && index === valueEls.length - 1) {
-                $(valueEl).html(`"${text}"`);
+                valueEl.innerHTML = `"${text}"`;
               } else if (index === 0) {
-                $(valueEl).html(`"${text}`);
+                valueEl.innerHTML = `"${text}`;
               } else if (index === valueEls.length - 1) {
-                $(valueEl).html(`${text}"`);
+                valueEl.innerHTML = `${text}"`;
               } else {
-                $(valueEl).html(`${text}`);
+                valueEl.innerHTML = `${text}`;
               }
             } else {
-              $(valueEl).html(`${text}`);
+              valueEl.innerHTML = `${text}`;
             }
           });
         } else if (lineData.jsonDataType === "string" && lineData.jsonDataType !== lineData.otherSideDataType) {
-          $(valueEls[0]).html(`${wrapStart}"${wrapEnd}${escapeHtml(lineData.jsonData)}${wrapStart}"${wrapEnd}`);
+          valueEls[0].innerHTML = `${wrapStart}"${wrapEnd}${escapeHtml(lineData.jsonData)}${wrapStart}"${wrapEnd}`;
         }
       },
 
@@ -2680,22 +2695,18 @@
           const uniqueAllDiffLines = [...new Set(allDiffLines)];
 
           let index;
-          // 使用模运算实现循环跳转，避免边界计算错误
           const len = uniqueAllDiffLines.length;
-          if (upOrdown === "up") {
+          if (this.jsonDiffLastIndex === -1) {
+            index = upOrdown === "up" ? len - 1 : 0;
+          } else if (upOrdown === "up") {
             index = ((this.jsonDiffLastIndex - 1) % len + len) % len;
           } else {
             index = (this.jsonDiffLastIndex + 1) % len;
           }
-          let lineNum = uniqueAllDiffLines[index] - 1;
-          if (!lineNum) {
-            lineNum = 0;
-          }
+          const lineNum = Math.max(0, uniqueAllDiffLines[index] - 1);
 
-          // 清除上一次的高亮
-          $(".diff-current-highlight").removeClass("diff-current-highlight");
+          document.querySelectorAll(".diff-current-highlight").forEach(el => el.classList.remove("diff-current-highlight"));
 
-          // 确定是左还是右编辑器，滚动并高亮
           let targetEditor, targetContainer;
           if (keys1.includes(String(lineNum)) || keys1.includes(lineNum)) {
             targetEditor = this.jsonEditorLeft;
@@ -2709,15 +2720,14 @@
           targetEditor.aceEditor.scrollToLine(lineNum, true, true, () => {
             // 滚动完成后，给当前行加闪烁高亮
             setTimeout(() => {
-              const $container = $(targetContainer);
-              const $lines = $container.find(".ace_line");
+              const lines = targetContainer.querySelectorAll(".ace_line");
               const aceFirstRow = targetEditor.aceEditor.getFirstVisibleRow();
               const targetIndex = lineNum - aceFirstRow;
-              if ($lines[targetIndex]) {
-                $($lines[targetIndex]).addClass("diff-current-highlight");
+              if (lines[targetIndex]) {
+                lines[targetIndex].classList.add("diff-current-highlight");
                 // 2秒后自动移除高亮
                 setTimeout(() => {
-                  $($lines[targetIndex]).removeClass("diff-current-highlight");
+                  lines[targetIndex].classList.remove("diff-current-highlight");
                 }, 2000);
               }
             }, 100);
