@@ -282,9 +282,10 @@ const propertiesToJson = function (propsList) {
     for (let i = 0; i < propsList.length; i++) {
         let prop = propsList[i].trim();
         if (prop === "") continue;
-        let pair = prop.split("=");
-        let propKeyStr = pair[0];
-        let propValueStr = pair[1];
+        const eqIndex = prop.indexOf("=");
+        if (eqIndex === -1) continue;
+        let propKeyStr = prop.substring(0, eqIndex);
+        let propValueStr = prop.substring(eqIndex + 1);
         if (/^\d{17,}$/.test(propValueStr)) {
             propValueStr = BigInt(`${propValueStr}`);
         } else if (/^\d{1,}\.\d+$/.test(propValueStr)) {

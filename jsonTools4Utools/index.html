@@ -791,7 +791,7 @@
           if (start.row === end.row) {
             // 更新内容在key外面，不影响paths
             if (start.column > newkeyColum) return;
-            if (end.column < newkeyColum && start.column <= newkeyIndent * 2 + 1) return;
+            if (end.column < newkeyColum) return;
           } else {  // 多行更新
             // 不包含 key，不影响paths
             if (!/ {0,}".*?": /g.test(newContent)) return;
