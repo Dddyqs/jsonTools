@@ -309,7 +309,6 @@
 </body>
 <script src="./assets/vue2.js"></script>
 <script src="./assets/element-ui.js"></script>
-<script src="./assets/jquery.js"></script>
 <script src="./assets/jsoneditor10.2.0.min.js"></script>
 <script src="./assets/jsonpath.cjs"></script>
 <script src="./assets/jsonpath.min.js"></script>
@@ -333,14 +332,7 @@
       /\|\s*max_by\s*\(/, /\|\s*min_by\s*\(/, /\|\s*not_null\s*\(/, /\|\s*to_string\s*\(/,
       /\|\s*to_number\s*\(/, /\.\s*@/, /\[\s*\*\s*\]/, /\[\s*\d+\s*:\s*\d*\s*\]/, /\[\s*\d+\s*:\s*:\s*\d+\s*\]/
     ],
-    jq: [
-      /^\./, /\bmap\s*\(/, /\bselect\s*\(/, /\bgroup_by\s*\(/, /\bunique\s*\(/,
-      /\bsort\s*\(/, /\bflatten\s*\(/, /\bkeys\s*\(/, /\bvalues\s*\(/, /\bto_entries\s*\(/,
-      /\bfrom_entries\s*\(/, /\bwith_entries\s*\(/, /\badd\s*\(/, /\.\[\s*\]/, /\|\s*\./,
-      /\s+as\s+\$\w+\s*\|/, /\breduce\s+/, /\bforeach\s+/, /\/\/\s*\./, /\?\/\//,
-      /@base64\b/, /@uri\b/, /@csv\b/, /@tsv\b/, /@html\b/, /@json\b/, /@text\b/,
-      /\bif\s+.+\s+then\s+.+\s+(else\s+.+\s+)?end\b/, /\btry\s+/, /\bcatch\s+/
-    ],
+    jsonpath: /^\$/,
     imageUrl: /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?.*)?$/i,
     msTimestamp: /^[1-9]\d{12}$/,
     sTimestamp: /^[1-9]\d{9}$/
@@ -542,25 +534,16 @@
           }
         }
 
-        for (const pattern of _RE.jq) {
-          if (pattern.test(str)) {
-            return 'jq';
-          }
-        }
-
         return 'jsonpath';
       },
       // AI判断查询模式
-      async aiDetectQueryMode(queryStr) {
+      aiDetectQueryMode(queryStr) {
         const trimmed = queryStr.trim();
 
-        if (/^\.\w/.test(trimmed) || /\b(map|select|group_by|sort_by|unique|flatten|length|keys|values|to_entries|from_entries|add|any|all)\b/.test(trimmed)) {
-          return 'jq';
-        }
-        if (/^@/.test(trimmed) || /\[\?[\w.]+\s*[><=!]=/.test(trimmed) || /\b(contains|starts_with|ends_with|length)\b/.test(trimmed) && !/^\.\w/.test(trimmed)) {
+        if (_RE.jmespath[0].test(trimmed) || /\[\?[\w.]+\s*[><=!]=/.test(trimmed) || /\b(contains|starts_with|ends_with|length)\b/.test(trimmed)) {
           return 'jmespath';
         }
-        if (/^\$/.test(trimmed)) {
+        if (_RE.jsonpath.test(trimmed)) {
           return 'jsonpath';
         }
 
@@ -572,7 +555,6 @@
 
 可选类型：
 - jsonpath：以$开头，如 $.data.items、$..name、$[0]
-- jq：以.开头或包含jq函数，如 .items、map(.name)、select(.age>18)
 - jmespath：以@开头或包含jmespath函数，如 @.items、[?age>\`18\`]
 - natural：自然语言描述，不是查询语法，如"提取所有name"、"随机保留2个"
 
@@ -580,14 +562,13 @@
             },
             {
               role: 'user',
-              content: `判断以下输入的语法类型：\n${queryStr}\n\n只输出类型（jsonpath/jq/jmespath/natural）：`
+              content: `判断以下输入的语法类型：\n${queryStr}\n\n只输出类型（jsonpath/jmespath/natural）：`
             }
           ];
 
           const result = await utools.ai({ messages });
           const content = (result.content || result).trim().toLowerCase();
 
-          if (content.includes('jq')) return 'jq';
           if (content.includes('jmespath')) return 'jmespath';
           if (content.includes('natural')) return 'ai';
           return 'jsonpath';
@@ -806,21 +787,8 @@
             path = getJsonpathByLine(this.jsonEditorRight, lineNum);
           }
           if (path) {
-            let queryValue;
-            if (this.jsonQueryMode === "jq") {
-              if (path === "$") {
-                queryValue = ".";
-              } else if (path.startsWith("$.")) {
-                queryValue = path.substring(1);
-              } else if (path.startsWith("$[")) {
-                queryValue = "." + path.substring(1);
-              } else {
-                queryValue = path;
-              }
-            } else {
-              queryValue = path;
-            }
-            this.setJsonQueryStr(queryValue, true); // true 表示这是自动生成的
+            const queryValue = path;
+            this.setJsonQueryStr(queryValue, true);
           }
         });
 
@@ -1506,34 +1474,25 @@
         }
       },
 
-      //根据jsonpath、jmespath、jq获取数据
+      //根据jsonpath、jmespath获取数据
       async getJsonByQuery(op) {
-        // 防重入：上一次查询未完成时忽略新的请求
         if (this.isQueryExecuting) return;
         this.opName = "getJsonByQuery";
-        // 设置查询执行标志，防止onTextSelectionChange修改jsonEditorActive
         this.isQueryExecuting = true;
-        // 保存当前的编辑器激活状态和面板状态，防止输出后被修改
         const savedEditorActive = this.jsonEditorActive;
         const savedTransJsonEditorName = this.transJsonEditorName;
         this.isBoxHidden.leftSection = false;
         this.isBoxHidden.jsonEditorRightBox = false;
         this.jsonEditorRight.setMode("code");
-        // 只有非自动生成的用户输入才记录历史
         if (!this.isAutoFilledQuery && !this.jsonQueryStrHistorys.includes(this.jsonQueryStr)) {
           this.jsonQueryStrHistorys.push(this.jsonQueryStr);
           this.jsonQueryStrList.unshift({ "value": this.jsonQueryStr });
         }
         this.isAutoFilledQuery = false;
         try {
-          const isSourceRight = this.jsonEditorActive 
-            ? this.jsonEditorActive === "右" 
-            : this.transJsonEditorName === "JSON右";
-          const isJq = this.jsonQueryMode === "jq";
+          const isSourceRight = this.jsonEditorActive === "右" || this.transJsonEditorName === "JSON右";
           const activeEditor = isSourceRight ? this.jsonEditorRight : this.jsonEditorLeft;
-          const jsonData = isJq 
-            ? JSON.parse(activeEditor.getText()) 
-            : LosslessJSON.parse(activeEditor.getText(), myLosslessJSONReviver);
+          const jsonData = LosslessJSON.parse(activeEditor.getText(), myLosslessJSONReviver);
 
           let resJsonData;
           if (this.jsonQueryMode === "jsonpath") {
@@ -1541,11 +1500,6 @@
             resJsonData = Array.isArray(jpResult) && jpResult.length === 1 ? jpResult[0] : jpResult;
           } else if (this.jsonQueryMode === "jmespath") {
             resJsonData = activeEditor.options.executeQuery(jsonData, this.jsonQueryStr);
-          } else if (this.jsonQueryMode === "jq") {
-            if (!window.jaqWasm) {
-              throw new Error('jaq 模块未加载，请检查 preload.js 是否正确引入 jaq-wasm');
-            }
-            resJsonData = await window.jaqWasm.json(jsonData, this.jsonQueryStr);
           }
 
           let finalResult = resJsonData;
@@ -1730,10 +1684,6 @@
       // 打开 jsonpath 的学习网页
       openJsonpathLearn() {
         utools.shellOpenExternal("https://www.npmjs.com/package/jsonpath-plus");
-      },
-      // 打开 jq 的学习网页
-      openJqLearn() {
-        utools.shellOpenExternal("https://jqlang.org/manual/");
       },
       // 判断是否为图片URL
       isImageUrl(value) {
@@ -2898,28 +2848,17 @@
         handler: function (newVal, oldVal) {
           if (newVal !== oldVal && this.jsonQueryStr) {
             const path = this.jsonQueryStr.trim();
-            // 切换模式时自动转换语法格式
-            if (newVal === "jq" && oldVal === "jsonpath") {
-              // jsonpath → jq
-              if (path === "$") {
-                this.jsonQueryStr = ".";
-              } else if (path.startsWith("$.")) {
-                // $.items → .items
-                this.jsonQueryStr = path.substring(1);
-              } else if (path.startsWith("$[")) {
-                // $[0] → .[0]
-                this.jsonQueryStr = "." + path.substring(1);
-              }
-            } else if (newVal === "jsonpath" && oldVal === "jq") {
-              // jq → jsonpath
-              if (path === ".") {
-                this.jsonQueryStr = "$";
-              } else if (path.startsWith(".[")) {
-                // .[0] → $[0]
+            if (newVal === "jsonpath" && oldVal === "jmespath") {
+              if (path.startsWith("@")) {
                 this.jsonQueryStr = "$" + path.substring(1);
-              } else if (path.startsWith(".")) {
-                // .items → $.items
+              } else if (path.startsWith("[")) {
                 this.jsonQueryStr = "$" + path;
+              }
+            } else if (newVal === "jmespath" && oldVal === "jsonpath") {
+              if (path === "$") {
+                this.jsonQueryStr = "@";
+              } else if (path.startsWith("$")) {
+                this.jsonQueryStr = "@" + path.substring(1);
               }
             }
           }
